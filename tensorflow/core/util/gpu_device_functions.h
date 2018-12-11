@@ -494,7 +494,6 @@ __device__ inline Eigen::half CudaAtomicAdd(Eigen::half* ptr,
       ptr, [value](Eigen::half a) { return a + value; });
 }
 
-
 #if __CUDA_ARCH__ < 600
 __device__ inline double CudaAtomicAdd(double* ptr, double value) {
   return detail::CudaAtomicCasHelper(ptr,
