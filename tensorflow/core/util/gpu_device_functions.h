@@ -762,6 +762,8 @@ __device__ detail::ToTypeIfConvertible<U, T> GpuAtomicDiv(T* ptr, U value) {
   return detail::GpuAtomicCasHelper(ptr, [value](T a) { return a / value; });
 }
 
+
+#if GOOGLE_CUDA
 // Operator overloads for complex numbers.
 
 __device__ inline std::complex<float> operator+(const std::complex<float>& a,
@@ -819,6 +821,7 @@ __device__ inline std::complex<double> operator/(
                        make_cuDoubleComplex(b.real(), b.imag()));
   return std::complex<double>(result.x, result.y);
 }
+#endif // GOOGLE_CUDA
 
 }  // namespace tensorflow
 
