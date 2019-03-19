@@ -34,7 +34,7 @@ __global__ void GatherSliceOpKernel(
     const int64 slice_size, const int64 out_size) {
   // TODO(ebrevdo): reduce inner loop into two loops:
   // one over the number of locs, and one over the offsets inside the locs.
-  CUDA_1D_KERNEL_LOOP(i, out_size) {
+  GPU_1D_KERNEL_LOOP(i, out_size) {
     const Index loc = i / slice_size;
     const auto indices_i = indices + IXDIM * loc;
     bool out_of_bounds = false;
@@ -84,7 +84,7 @@ struct GatherNdSlice<GPUDevice, T, Index, IXDIM> {
       batch_indices[i - 1] = Tparams.dimension(i - 1);
       batch_strides[i - 1] = batch_strides[i] * Tparams.dimension(i);
     }
-    CudaLaunchConfig config = GetCudaLaunchConfig(out_size, d);
+    GpuLaunchConfig config = GetGpuLaunchConfig(out_size, d);
 
     TF_CHECK_OK(CudaLaunchKernel(GatherSliceOpKernel<T, Index, IXDIM>,
                                  config.block_count, config.thread_per_block, 0,

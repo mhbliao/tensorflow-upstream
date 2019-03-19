@@ -38,7 +38,7 @@ __global__ void ResizeNearestNeighborNHWC(
     const int in_width, const int channels, const int out_height,
     const int out_width, const float height_scale, const float width_scale,
     T* top_data) {
-  CUDA_1D_KERNEL_LOOP(index, nthreads) {
+  GPU_1D_KERNEL_LOOP(index, nthreads) {
     int n = index;
     int c = n % channels;
     n /= channels;
@@ -69,7 +69,7 @@ __global__ void LegacyResizeNearestNeighborNHWC(
     const int in_width, const int channels, const int out_height,
     const int out_width, const float height_scale, const float width_scale,
     T* top_data) {
-  CUDA_1D_KERNEL_LOOP(index, nthreads) {
+  GPU_1D_KERNEL_LOOP(index, nthreads) {
     int n = index;
     int c = n % channels;
     n /= channels;
@@ -98,7 +98,7 @@ __global__ void ResizeNearestNeighborBackwardNHWC(
     const int in_width, const int channels, const int out_height,
     const int out_width, const float height_scale, const float width_scale,
     T* bottom_diff) {
-  CUDA_1D_KERNEL_LOOP(index, nthreads) {
+  GPU_1D_KERNEL_LOOP(index, nthreads) {
     int n = index;
     int c = n % channels;
     n /= channels;
@@ -119,7 +119,7 @@ __global__ void ResizeNearestNeighborBackwardNHWC(
                 out_width - 1),
             0);
     const int idx = (out_y * out_width + out_x) * channels + c;
-    CudaAtomicAdd(bottom_diff_n + idx, ldg(top_diff + index));
+    GpuAtomicAdd(bottom_diff_n + idx, ldg(top_diff + index));
   }
 }
 
@@ -129,7 +129,7 @@ __global__ void LegacyResizeNearestNeighborBackwardNHWC(
     const int in_width, const int channels, const int out_height,
     const int out_width, const float height_scale, const float width_scale,
     T* bottom_diff) {
-  CUDA_1D_KERNEL_LOOP(index, nthreads) {
+  GPU_1D_KERNEL_LOOP(index, nthreads) {
     int n = index;
     int c = n % channels;
     n /= channels;
@@ -148,7 +148,7 @@ __global__ void LegacyResizeNearestNeighborBackwardNHWC(
                             : static_cast<int>(floorf(in_x * width_scale)),
             out_width - 1);
     const int idx = (out_y * out_width + out_x) * channels + c;
-    CudaAtomicAdd(bottom_diff_n + idx, ldg(top_diff + index));
+    GpuAtomicAdd(bottom_diff_n + idx, ldg(top_diff + index));
   }
 }
 
@@ -173,7 +173,7 @@ struct ResizeNearestNeighbor<GPUDevice, T, half_pixel_centers, align_corners> {
     const int output_size = batch_size * out_height * out_width * channels;
     if (output_size == 0) return true;
 
-    CudaLaunchConfig config = GetCudaLaunchConfig(output_size, d);
+    GpuLaunchConfig config = GetGpuLaunchConfig(output_size, d);
     if (half_pixel_centers) {
       TF_CHECK_OK(CudaLaunchKernel(
           ResizeNearestNeighborNHWC<T>, config.block_count,
@@ -219,7 +219,7 @@ struct ResizeNearestNeighborGrad<GPUDevice, T, half_pixel_centers,
 
     const int output_size = batch_size * channels * out_height * out_width;
 
-    CudaLaunchConfig output_config = GetCudaLaunchConfig(output_size, d);
+    GpuLaunchConfig output_config = GetGpuLaunchConfig(output_size, d);
     TF_CHECK_OK(CudaLaunchKernel(SetZero<T>, output_config.block_count,
                                  output_config.thread_per_block, 0, d.stream(),
                                  output_size, output.data()));
@@ -228,7 +228,7 @@ struct ResizeNearestNeighborGrad<GPUDevice, T, half_pixel_centers,
     const int input_size = batch_size * channels * in_height * in_width;
     if (input_size == 0) return true;
 
-    CudaLaunchConfig input_config = GetCudaLaunchConfig(input_size, d);
+    GpuLaunchConfig input_config = GetGpuLaunchConfig(input_size, d);
     if (half_pixel_centers) {
       TF_CHECK_OK(CudaLaunchKernel(
           ResizeNearestNeighborBackwardNHWC<T>, input_config.block_count,

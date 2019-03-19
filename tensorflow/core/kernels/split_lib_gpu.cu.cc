@@ -88,7 +88,7 @@ __global__ void SplitOpKernel(const T* input, int32 prefix_dim_size,
   int32 size = prefix_dim_size * split_dim_size * suffix_dim_size;
   int32 piece_size = split_dim_size / num_split;
 
-  CUDA_1D_KERNEL_LOOP(offset, size) {
+  GPU_1D_KERNEL_LOOP(offset, size) {
     // Calculate the index into input from offset.
     int32 i = offset / (split_dim_size * suffix_dim_size);
     int32 j = (offset % (split_dim_size * suffix_dim_size)) / suffix_dim_size;
@@ -182,7 +182,7 @@ __global__ void SplitVOpKernel_fixed(const T* input, int32 prefix_dim_size,
   int32 size = prefix_dim_size * suffix_dim_size;
   int32 piece_size = suffix_dim_size / num_split;
 
-  CUDA_1D_KERNEL_LOOP(offset, size) {
+  GPU_1D_KERNEL_LOOP(offset, size) {
     // Calculate the index into input from offset.
     int32 i = offset / suffix_dim_size;
     int32 j = offset % suffix_dim_size;
@@ -199,7 +199,7 @@ void SplitOpGPULaunch<T>::Run(const Eigen::GpuDevice& d, const T* input,
                               int32 prefix_dim_size, int32 split_dim_size,
                               int32 suffix_dim_size,
                               const GpuDeviceArrayStruct<T*>& output_ptr_data) {
-  CudaLaunchConfig config = GetCudaLaunchConfig(
+  GpuLaunchConfig config = GetGpuLaunchConfig(
       prefix_dim_size * split_dim_size * suffix_dim_size, d);
 
   TF_CHECK_OK(CudaLaunchKernel(SplitOpKernel<T>, config.block_count,
@@ -215,15 +215,15 @@ void SplitVOpGPULaunch<T, IntType>::Run(
     const GpuDeviceArrayStruct<IntType>& output_scan,
     const GpuDeviceArrayStruct<T*>& output_ptr_data) {
   if (fixed_size) {
-    CudaLaunchConfig config =
-        GetCudaLaunchConfig(total_rows * total_cols, gpu_device);
+    GpuLaunchConfig config =
+        GetGpuLaunchConfig(total_rows * total_cols, gpu_device);
 
     TF_CHECK_OK(CudaLaunchKernel(SplitVOpKernel_fixed<T>, config.block_count,
                                  config.thread_per_block, 0,
                                  gpu_device.stream(), input_ptr, total_rows,
                                  total_cols, output_ptr_data));
   } else {
-    auto config = GetCuda2DLaunchConfig(total_cols, total_rows, gpu_device);
+    auto config = GetGpu2DLaunchConfig(total_cols, total_rows, gpu_device);
     IntType smem_max = gpu_device.sharedMemPerBlock();
     IntType smem_usage = output_scan.size * sizeof(IntType);
     // performance crossover is less than using maximum available shared

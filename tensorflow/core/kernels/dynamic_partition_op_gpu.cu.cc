@@ -35,6 +35,10 @@ limitations under the License.
 
 #define EIGEN_USE_GPU
 
+#include "third_party/cub/device/device_radix_sort.cuh"
+#include "third_party/cub/device/device_reduce.cuh"
+#include "third_party/cub/iterator/constant_input_iterator.cuh"
+#include "third_party/cub/thread/thread_operators.cuh"
 #include "tensorflow/core/common_runtime/gpu/gpu_event_mgr.h"
 #include "tensorflow/core/framework/bounds_check.h"
 #include "tensorflow/core/framework/op_kernel.h"
@@ -45,10 +49,6 @@ limitations under the License.
 #include "tensorflow/core/kernels/gather_functor_gpu.cu.h"
 #include "tensorflow/core/util/gpu_kernel_helper.h"
 #include "tensorflow/core/util/transform_output_iterator.h"
-#include "third_party/cub/device/device_radix_sort.cuh"
-#include "third_party/cub/device/device_reduce.cuh"
-#include "third_party/cub/iterator/constant_input_iterator.cuh"
-#include "third_party/cub/thread/thread_operators.cuh"
 
 namespace tensorflow {
 
@@ -59,14 +59,14 @@ namespace {
 template <typename T>
 __global__ void RangeInitKernel(const T start, const T delta, const int32 size,
                                 T* out) {
-  CUDA_1D_KERNEL_LOOP(i, size) { out[i] = start + i * delta; }
+  GPU_1D_KERNEL_LOOP(i, size) { out[i] = start + i * delta; }
 }
 
 __global__ void MoveValuesKernel(const int32* keys, const int32* values,
                                  const int32* size, int32 out_size,
                                  int32* out) {
   int32 N = min(ldg(size), out_size);
-  CUDA_1D_KERNEL_LOOP(i, N) {
+  GPU_1D_KERNEL_LOOP(i, N) {
     int32 key = ldg(keys + i);
     int32 value = ldg(values + i);
     if (FastBoundsCheck(key, out_size)) out[key] = value;
@@ -78,7 +78,7 @@ __global__ void MoveValuesKernel(const int32* keys, const int32* values,
 template <typename T>
 void RangeInit(const GPUDevice& d, const T start, const T delta,
                const int32 size, typename TTypes<T>::Flat out) {
-  CudaLaunchConfig config = GetCudaLaunchConfig(size, d);
+  GpuLaunchConfig config = GetGpuLaunchConfig(size, d);
   TF_CHECK_OK(CudaLaunchKernel(RangeInitKernel<T>, config.block_count,
                                config.thread_per_block, 0, d.stream(), start,
                                delta, size, out.data()));
@@ -93,7 +93,7 @@ void MoveValues(const GPUDevice& d, int32* keys, int32* values, int32* num_runs,
   // This is valid for correct inputs, because then out_size >= *num_runs.
   // For wrong inputs, we may have out_size < *num_runs. In this case we will
   // only handle the first out_size values.
-  CudaLaunchConfig config = GetCudaLaunchConfig(out_size, d);
+  GpuLaunchConfig config = GetGpuLaunchConfig(out_size, d);
   TF_CHECK_OK(CudaLaunchKernel(MoveValuesKernel, config.block_count,
                                config.thread_per_block, 0, d.stream(), keys,
                                values, num_runs, out_size, out));
@@ -103,7 +103,7 @@ template <typename T>
 void CallGatherKernel(const GPUDevice& d, const T* params, const int32* indices,
                       T* out, int64 gather_dim_size, int64 indices_size,
                       int64 slice_size, int64 out_size) {
-  CudaLaunchConfig config = GetCudaLaunchConfig(out_size, d);
+  GpuLaunchConfig config = GetGpuLaunchConfig(out_size, d);
   TF_CHECK_OK(CudaLaunchKernel(
       GatherOpKernel<T, int32, true>, config.block_count,
       config.thread_per_block, 0, d.stream(), params, indices, out,

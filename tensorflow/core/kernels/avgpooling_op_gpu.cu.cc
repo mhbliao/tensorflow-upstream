@@ -48,7 +48,7 @@ __global__ void AvePoolBackwardNHWC(const int nthreads,
                                     const int kernel_w, const int stride_h,
                                     const int stride_w, const int pad_t,
                                     const int pad_l, dtype* const bottom_diff) {
-  CUDA_1D_KERNEL_LOOP(index, nthreads) {
+  GPU_1D_KERNEL_LOOP(index, nthreads) {
     // find out the local index
     // find out the local offset
     const int c = index % channels;
@@ -90,7 +90,7 @@ bool RunAvePoolBackwardNHWC(const T* const top_diff, const int num,
                             const int pad_l, T* const bottom_diff,
                             const GPUDevice& d) {
   int x_size = num * height * width * channels;
-  CudaLaunchConfig config = GetCudaLaunchConfig(x_size, d);
+  GpuLaunchConfig config = GetGpuLaunchConfig(x_size, d);
   TF_CHECK_OK(CudaLaunchKernel(
       AvePoolBackwardNHWC<T>, config.block_count, config.thread_per_block, 0,
       d.stream(), config.virtual_thread_count, top_diff, num, height, width,

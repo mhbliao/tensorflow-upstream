@@ -31,7 +31,7 @@ __global__ void MatrixSetDiagKernel(const int num_threads, const int m,
                                     const int n, const int minsize,
                                     const Scalar* diag_ptr,
                                     Scalar* output_ptr) {
-  CUDA_1D_KERNEL_LOOP(index, num_threads) {
+  GPU_1D_KERNEL_LOOP(index, num_threads) {
     const int batch = index / minsize;
     const int col = index - batch * minsize;
     const int out_index = batch * m * n + (n + 1) * col;
@@ -43,7 +43,7 @@ template <typename Scalar>
 __global__ void MatrixCopyInputAndSetDiagKernel(
     const int num_threads, const int m, const int n, const int minsize,
     const Scalar* input_ptr, const Scalar* diag_ptr, Scalar* output_ptr) {
-  CUDA_1D_KERNEL_LOOP(index, num_threads) {
+  GPU_1D_KERNEL_LOOP(index, num_threads) {
     const int global_row = index / n;
     const int col = index - global_row * n;
     const int batch = global_row / m;
@@ -71,15 +71,15 @@ struct MatrixSetDiag<GPUDevice, Scalar> {
     CHECK_EQ(diag.dimension(1), minsize);
     if (batch_size == 0 || minsize == 0) return;
     if (input.data() == output.data()) {
-      CudaLaunchConfig config =
-          GetCudaLaunchConfig(batch_size * minsize, device);
+      GpuLaunchConfig config =
+          GetGpuLaunchConfig(batch_size * minsize, device);
       TF_CHECK_OK(CudaLaunchKernel(MatrixSetDiagKernel<Scalar>,
                                    config.block_count, config.thread_per_block,
                                    0, device.stream(),
                                    config.virtual_thread_count, m, n, minsize,
                                    diag.data(), output.data()));
     } else {
-      CudaLaunchConfig config = GetCudaLaunchConfig(batch_size * m * n, device);
+      GpuLaunchConfig config = GetGpuLaunchConfig(batch_size * m * n, device);
       TF_CHECK_OK(CudaLaunchKernel(MatrixCopyInputAndSetDiagKernel<Scalar>,
                                    config.block_count, config.thread_per_block,
                                    0, device.stream(),

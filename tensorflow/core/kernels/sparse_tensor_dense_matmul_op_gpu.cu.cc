@@ -36,7 +36,7 @@ __global__ void SparseTensorDenseMatMulKernel(int nnz, int m, int b_rows,
   // out_{ij} = sum_k {a_ik b_kj}
   // out = A * B', out_{ij} = sum_k {a_ik (b')_kj}; b'_{kj} = b_{jk}
   const int n = (ADJ_B) ? b_cols : b_rows;
-  CUDA_1D_KERNEL_LOOP(index, nnz * p) {
+  GPU_1D_KERNEL_LOOP(index, nnz * p) {
     const int a_ix = index / p;
     const int j = index % p;
     const int i = ldg(a_indices + 2 * a_ix + ((ADJ_A) ? 1 : 0));
@@ -47,7 +47,7 @@ __global__ void SparseTensorDenseMatMulKernel(int nnz, int m, int b_rows,
     // out[i, j]
     T* out_location = out + i * p + j;
     if (!FastBoundsCheck(k, n)) {
-      CudaAtomicAdd(out_location, std::numeric_limits<T>::quiet_NaN());
+      GpuAtomicAdd(out_location, std::numeric_limits<T>::quiet_NaN());
       continue;
     }
 
@@ -56,7 +56,7 @@ __global__ void SparseTensorDenseMatMulKernel(int nnz, int m, int b_rows,
 
     // b_value == (ADJ_B) ? b[j, k] : b[k, j]
     const T b_value = ldg(b + ((ADJ_B) ? j * b_cols + k : k * b_cols + j));
-    CudaAtomicAdd(out_location, a_value * b_value);
+    GpuAtomicAdd(out_location, a_value * b_value);
   }
 }
 
@@ -79,7 +79,7 @@ struct SparseTensorDenseMatMulFunctor<GPUDevice, T, Tindices, ADJ_A, ADJ_B> {
 
     // TODO(ebrevdo): Should this be alpha * nnz instead of
     // out.size()?  Perhaps p * nnz ?
-    CudaLaunchConfig config = GetCudaLaunchConfig(p * nnz, d);
+    GpuLaunchConfig config = GetGpuLaunchConfig(p * nnz, d);
 
     TF_CHECK_OK(CudaLaunchKernel(
         SparseTensorDenseMatMulKernel<T, Tindices, ADJ_A, ADJ_B>,

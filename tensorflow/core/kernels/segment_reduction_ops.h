@@ -16,26 +16,26 @@ limitations under the License.
 #ifndef TENSORFLOW_CORE_KERNELS_SEGMENT_REDUCTION_OPS_H_
 #define TENSORFLOW_CORE_KERNELS_SEGMENT_REDUCTION_OPS_H_
 
-// This file requires the following include because it uses CudaAtomicMax:
+// This file requires the following include because it uses GpuAtomicMax:
 // #include "tensorflow/core/util/gpu_kernel_helper.h"
 
 // Unfortunately we can't add the #include, since it breaks compilation for
 // non-GPU targets. This only breaks in clang, because it's more strict for
-// template code and CudaAtomicMax is used in template context.
+// template code and GpuAtomicMax is used in template context.
 
-// This file requires the following include because it uses CudaAtomicMax:
+// This file requires the following include because it uses GpuAtomicMax:
 // #include "tensorflow/core/util/gpu_kernel_helper.h"
 
 // Unfortunately we can't add the #include, since it breaks compilation for
 // non-GPU targets. This only breaks in clang, because it's more strict for
-// template code and CudaAtomicMax is used in template context.
+// template code and GpuAtomicMax is used in template context.
 
-// This file requires the following include because it uses CudaAtomicMax:
+// This file requires the following include because it uses GpuAtomicMax:
 // #include "tensorflow/core/util/gpu_kernel_helper.h"
 
 // Unfortunately we can't add the #include, since it breaks compilation for
 // non-GPU targets. This only breaks in clang, because it's more strict for
-// template code and CudaAtomicMax is used in template context.
+// template code and GpuAtomicMax is used in template context.
 
 #include "third_party/eigen3/unsupported/Eigen/CXX11/Tensor"
 #include "tensorflow/core/framework/tensor.h"
@@ -86,7 +86,7 @@ template <typename T>
 struct SumOpGpu {
   EIGEN_DEVICE_FUNC EIGEN_STRONG_INLINE void operator()(T* dest,
                                                         const T& value) {
-    CudaAtomicAdd(dest, value);
+    GpuAtomicAdd(dest, value);
   }
 };
 
@@ -94,7 +94,7 @@ template <typename T>
 struct ProdOpGpu {
   EIGEN_DEVICE_FUNC EIGEN_STRONG_INLINE void operator()(T* dest,
                                                         const T& value) {
-    CudaAtomicMul(dest, value);
+    GpuAtomicMul(dest, value);
   }
 };
 
@@ -102,7 +102,7 @@ template <typename T>
 struct MaxOpGpu {
   EIGEN_DEVICE_FUNC EIGEN_STRONG_INLINE void operator()(T* dest,
                                                         const T& value) {
-    CudaAtomicMax(dest, value);
+    GpuAtomicMax(dest, value);
   }
 };
 
@@ -110,7 +110,7 @@ template <typename T>
 struct MinOpGpu {
   EIGEN_DEVICE_FUNC EIGEN_STRONG_INLINE void operator()(T* dest,
                                                         const T& value) {
-    CudaAtomicMin(dest, value);
+    GpuAtomicMin(dest, value);
   }
 };
 

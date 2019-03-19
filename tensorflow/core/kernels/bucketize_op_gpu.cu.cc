@@ -55,7 +55,7 @@ __global__ void BucketizeCustomKernel(
     boundaries = shared_mem_boundaries;
   }
 
-  CUDA_1D_KERNEL_LOOP(i, size_in) {
+  GPU_1D_KERNEL_LOOP(i, size_in) {
     T value = in[i];
     int32 bucket = 0;
     int32 count = size_boundaries;
@@ -93,7 +93,7 @@ struct BucketizeFunctor<GPUDevice, T> {
     }
     TF_RETURN_IF_ERROR(boundaries_array.Finalize());
 
-    CudaLaunchConfig config = GetCudaLaunchConfig(input.size(), d);
+    GpuLaunchConfig config = GetGpuLaunchConfig(input.size(), d);
     int32 shared_mem_size = sizeof(float) * boundaries_vector.size();
     const int32 kMaxSharedMemBytes = 16384;
     if (shared_mem_size < d.sharedMemPerBlock() &&

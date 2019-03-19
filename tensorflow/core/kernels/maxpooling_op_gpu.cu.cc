@@ -69,7 +69,7 @@ __global__ void MaxPoolForwardNCHW(
     const int pooled_width, const int kernel_h, const int kernel_w,
     const int stride_h, const int stride_w, const int pad_t, const int pad_l,
     dtype* top_data, int64* mask, const bool include_batch_in_index) {
-  CUDA_1D_KERNEL_LOOP(index, nthreads) {
+  GPU_1D_KERNEL_LOOP(index, nthreads) {
     int pw = index % pooled_width;
     int ph = (index / pooled_width) % pooled_height;
     int c = (index / pooled_width / pooled_height) % channels;
@@ -113,7 +113,7 @@ __global__ void MaxPoolForwardNoMaskKernel_NCHW_VECT_C(
     int32* top_data) {
   // TODO(pauldonnelly): Implement a better optimized version of this kernel.
   const int32 kMinINT8X4 = 0x80808080;
-  CUDA_1D_KERNEL_LOOP(index, nthreads) {
+  GPU_1D_KERNEL_LOOP(index, nthreads) {
     int pw = index % pooled_width;
     int ph = (index / pooled_width) % pooled_height;
     int c = (index / pooled_width / pooled_height) % channels;
@@ -143,7 +143,7 @@ __global__ void MaxPoolForwardNHWC(
     const int pooled_width, const int kernel_h, const int kernel_w,
     const int stride_h, const int stride_w, const int pad_t, const int pad_l,
     dtype* top_data, int64* mask, const bool include_batch_in_index) {
-  CUDA_1D_KERNEL_LOOP(index, nthreads) {
+  GPU_1D_KERNEL_LOOP(index, nthreads) {
     int n = index;
     int c = n % channels;
     n /= channels;
@@ -182,7 +182,7 @@ __global__ void MaxPoolBackwardNoMaskNHWC(
     const int pooled_width, const int kernel_h, const int kernel_w,
     const int stride_h, const int stride_w, const int pad_t, const int pad_l,
     const dtype* top_diff, dtype* bottom_diff) {
-  CUDA_1D_KERNEL_LOOP(index, nthreads) {
+  GPU_1D_KERNEL_LOOP(index, nthreads) {
     // First find out the index to the maximum, since we have no mask.
     int n = index;
     int c = n % channels;
@@ -211,7 +211,7 @@ __global__ void MaxPoolBackwardNoMaskNHWC(
     // Atomically accumulate the bottom diff. The index could still be
     // uninitialized, if all the bottom_data are NaN.
     if (maxidx != -1) {
-      CudaAtomicAdd(bottom_diff + n * height * width * channels + maxidx,
+      GpuAtomicAdd(bottom_diff + n * height * width * channels + maxidx,
                     top_diff[index]);
     }
   }
@@ -233,7 +233,7 @@ __global__ void MaxPoolBackwardNoMaskNHWC(
 //     bottom_diff: the gradient with respect to the input.
 //     include_batch_in_index: whether to include batch dimension in flattened
 //         index of `argmax`.
-// This function relies on CudaAtomicAdd to avoid race conditions. Also, before
+// This function relies on GpuAtomicAdd to avoid race conditions. Also, before
 // the kernel is run, you will need to make sure that bottom_diff is filled with
 // zero first.
 template <typename dtype>
@@ -241,10 +241,10 @@ __global__ void MaxPoolBackward(const int nthreads, const dtype* top_diff,
                                 const int64* mask, const int top_offset,
                                 const int bottom_offset, dtype* bottom_diff,
                                 const bool include_batch_in_index) {
-  CUDA_1D_KERNEL_LOOP(index, nthreads) {
+  GPU_1D_KERNEL_LOOP(index, nthreads) {
     const int offset =
         include_batch_in_index ? 0 : (index / top_offset) * bottom_offset;
-    CudaAtomicAdd(bottom_diff + offset + mask[index], top_diff[index]);
+    GpuAtomicAdd(bottom_diff + offset + mask[index], top_diff[index]);
   }
 }
 
@@ -269,7 +269,7 @@ __global__ void MaxPoolGradBackwardNoMaskNCHW(
     const int height, const int width, const int kernel_h, const int kernel_w,
     const int stride_h, const int stride_w, const int pad_t, const int pad_l,
     const dtype* top_diff, dtype* bottom_diff) {
-  CUDA_1D_KERNEL_LOOP(index, nthreads) {
+  GPU_1D_KERNEL_LOOP(index, nthreads) {
     // First find out the index to the maximum, since we have no mask.
     int pw = index % pooled_width;
     int ph = (index / pooled_width) % pooled_height;
@@ -309,7 +309,7 @@ __global__ void MaxPoolGradBackwardNoMaskNHWC(
     const int height, const int width, const int kernel_h, const int kernel_w,
     const int stride_h, const int stride_w, const int pad_t, const int pad_l,
     const dtype* top_diff, dtype* bottom_diff) {
-  CUDA_1D_KERNEL_LOOP(index, nthreads) {
+  GPU_1D_KERNEL_LOOP(index, nthreads) {
     // First find out the index to the maximum, since we have no mask.
     int n = index;
     int c = n % channels;
@@ -368,14 +368,14 @@ __global__ void MaxPoolGradBackward(const int nthreads, const dtype* top_diff,
                                     const int64* mask, const int top_offset,
                                     const int bottom_offset, dtype* bottom_diff,
                                     const bool include_batch_in_index) {
-  CUDA_1D_KERNEL_LOOP(index, nthreads) {
+  GPU_1D_KERNEL_LOOP(index, nthreads) {
     const int offset =
         include_batch_in_index ? 0 : (index / bottom_offset) * top_offset;
     bottom_diff[index] = top_diff[offset + mask[index]];
   }
 }
 
-#undef CUDA_1D_KERNEL_LOOP
+#undef GPU_1D_KERNEL_LOOP
 }  // namespace
 
 namespace functor {
@@ -485,7 +485,7 @@ bool MaxPoolGradBackwardNoMask<T>::operator()(
     const Eigen::GpuDevice& d) {
   const int num_kernels = batch * channels * pooled_height * pooled_width;
   if (num_kernels == 0) return true;
-  CudaLaunchConfig config = GetCudaLaunchConfig(num_kernels, d);
+  GpuLaunchConfig config = GetGpuLaunchConfig(num_kernels, d);
 
   if (data_format == FORMAT_NHWC) {
     TF_CHECK_OK(
@@ -512,7 +512,7 @@ bool MaxPoolGradBackwardWithArgmax<T>::operator()(
     T* bottom_diff, const Eigen::GpuDevice& d,
     const bool include_batch_in_index) {
   if (input_size == 0) return true;
-  CudaLaunchConfig config = GetCudaLaunchConfig(output_size, d);
+  GpuLaunchConfig config = GetGpuLaunchConfig(output_size, d);
   TF_CHECK_OK(CudaLaunchKernel(
       MaxPoolGradBackward<T>, config.block_count, config.thread_per_block, 0,
       d.stream(), output_size, top_diff, mask, top_offset, bottom_offset,

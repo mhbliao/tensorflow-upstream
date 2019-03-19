@@ -22,7 +22,6 @@ limitations under the License.
 #include "tensorflow/core/framework/type_traits.h"
 #include "tensorflow/core/kernels/eye_functor.h"
 #include "tensorflow/core/util/gpu_kernel_helper.h"
-#include "third_party/eigen3/unsupported/Eigen/CXX11/Tensor"
 
 namespace tensorflow {
 namespace functor {
@@ -34,7 +33,7 @@ __global__ void EyeKernel(int num_threads, int batch_size, int m, int n,
                           Scalar* output_ptr) {
   const Scalar one = Scalar(1);
   const Scalar zero = Scalar(0);
-  CUDA_1D_KERNEL_LOOP(index, num_threads) {
+  GPU_1D_KERNEL_LOOP(index, num_threads) {
     // TODO(rmlarsen): Benchmark to see if it's just as fast to use mod (%),
     // since it's easier to read.
     const int global_row = index / n;
@@ -52,7 +51,7 @@ struct EyeFunctor<GPUDevice, Scalar> {
     const int batch_size = matrix_batch.dimension(0);
     const int m = matrix_batch.dimension(1);
     const int n = matrix_batch.dimension(2);
-    CudaLaunchConfig config = GetCudaLaunchConfig(batch_size * m * n, device);
+    GpuLaunchConfig config = GetGpuLaunchConfig(batch_size * m * n, device);
     TF_CHECK_OK(CudaLaunchKernel(EyeKernel<Scalar>, config.block_count,
                                  config.thread_per_block, 0, device.stream(),
                                  config.virtual_thread_count, batch_size, m, n,

@@ -20,6 +20,11 @@ limitations under the License.
 
 #define EIGEN_USE_GPU
 
+#include "third_party/eigen3/unsupported/Eigen/CXX11/Tensor"
+#include "third_party/cub/device/device_reduce.cuh"
+#include "third_party/cub/device/device_select.cuh"
+#include "third_party/cub/iterator/counting_input_iterator.cuh"
+#include "third_party/cub/iterator/transform_input_iterator.cuh"
 #include "tensorflow/core/framework/bounds_check.h"
 #include "tensorflow/core/framework/register_types.h"
 #include "tensorflow/core/framework/tensor_types.h"
@@ -27,11 +32,6 @@ limitations under the License.
 #include "tensorflow/core/platform/macros.h"
 #include "tensorflow/core/platform/types.h"
 #include "tensorflow/core/util/gpu_kernel_helper.h"
-#include "third_party/cub/device/device_reduce.cuh"
-#include "third_party/cub/device/device_select.cuh"
-#include "third_party/cub/iterator/counting_input_iterator.cuh"
-#include "third_party/cub/iterator/transform_input_iterator.cuh"
-#include "third_party/eigen3/unsupported/Eigen/CXX11/Tensor"
 
 namespace tensorflow {
 
@@ -46,7 +46,7 @@ __global__ void PropagateWhereIndicesKernel(
   // TODO(ebrevdo): Use a multi-dimensional loop, increasing the
   // dimensions of individual indices manually, instead of relying on
   // a scalar loop variable and using integer division.
-  CUDA_1D_KERNEL_LOOP(i, output_rows) {
+  GPU_1D_KERNEL_LOOP(i, output_rows) {
     TIndex index_value = ldg(output + NDIM * i);
 #pragma unroll
     for (int c = 0; c < NDIM; ++c) {
@@ -323,7 +323,7 @@ struct Where<GPUDevice, NDIM, T, TIndex> {
     const Eigen::array<TIndex, NDIM> strides =
         CalculateStrides<TIndex, T, NDIM>(input);
     const TIndex output_rows = output.dimension(0);
-    CudaLaunchConfig config = GetCudaLaunchConfig(output_rows, d);
+    GpuLaunchConfig config = GetGpuLaunchConfig(output_rows, d);
     TF_CHECK_OK(CudaLaunchKernel(PropagateWhereIndicesKernel<NDIM, TIndex>,
                                  config.block_count, config.thread_per_block, 0,
                                  d.stream(), output_rows, strides,

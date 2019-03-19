@@ -20,12 +20,12 @@ limitations under the License.
 
 #include "tensorflow/core/kernels/population_count_op.h"
 
+#include "third_party/eigen3/unsupported/Eigen/CXX11/Tensor"
 #include "tensorflow/core/framework/op_kernel.h"
 #include "tensorflow/core/framework/register_types.h"
 #include "tensorflow/core/framework/tensor_types.h"
 #include "tensorflow/core/platform/types.h"
 #include "tensorflow/core/util/gpu_kernel_helper.h"
-#include "third_party/eigen3/unsupported/Eigen/CXX11/Tensor"
 
 namespace tensorflow {
 
@@ -36,14 +36,14 @@ namespace functor {
 template <typename T>
 __global__ void PopulationCountKernel(const int size, const T* input,
                                       uint8* output) {
-  CUDA_1D_KERNEL_LOOP(i, size) { output[i] = __popc(ldg(input + i)); }
+  GPU_1D_KERNEL_LOOP(i, size) { output[i] = __popc(ldg(input + i)); }
 }
 
 template <>
 __global__ void PopulationCountKernel(const int size, const int8* input,
                                       uint8* output) {
   // For some reason, __popc on a negative int8 gets confused.
-  CUDA_1D_KERNEL_LOOP(i, size) {
+  GPU_1D_KERNEL_LOOP(i, size) {
     output[i] = __popc(ldg(reinterpret_cast<const uint8*>(input + i)));
   }
 }
@@ -52,7 +52,7 @@ template <>
 __global__ void PopulationCountKernel(const int size, const int16* input,
                                       uint8* output) {
   // For some reason, __popc on a negative int16 gets confused.
-  CUDA_1D_KERNEL_LOOP(i, size) {
+  GPU_1D_KERNEL_LOOP(i, size) {
     output[i] = __popc(ldg(reinterpret_cast<const uint16*>(input + i)));
   }
 }
@@ -60,7 +60,7 @@ __global__ void PopulationCountKernel(const int size, const int16* input,
 template <>
 __global__ void PopulationCountKernel<int64>(const int size, const int64* input,
                                              uint8* output) {
-  CUDA_1D_KERNEL_LOOP(i, size) { output[i] = __popcll(ldg(input + i)); }
+  GPU_1D_KERNEL_LOOP(i, size) { output[i] = __popcll(ldg(input + i)); }
 }
 
 #define DEFINE_GPU_SPECS(T)                                                    \
@@ -70,7 +70,7 @@ __global__ void PopulationCountKernel<int64>(const int size, const int64* input,
       TTypes<uint8>::Flat output) {                                            \
     const GPUDevice& d = c->eigen_device<GPUDevice>();                         \
     int64 total_count = input.size();                                          \
-    CudaLaunchConfig config = GetCudaLaunchConfig(total_count, d);             \
+    GpuLaunchConfig config = GetGpuLaunchConfig(total_count, d);             \
     TF_CHECK_OK(CudaLaunchKernel(PopulationCountKernel<T>, config.block_count, \
                                  config.thread_per_block, 0, d.stream(),       \
                                  total_count, input.data(), output.data()));   \

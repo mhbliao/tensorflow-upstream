@@ -19,12 +19,12 @@ limitations under the License.
 
 #include "tensorflow/core/kernels/compare_and_bitpack_op.h"
 
+#include "third_party/eigen3/unsupported/Eigen/CXX11/Tensor"
 #include "tensorflow/core/framework/op_kernel.h"
 #include "tensorflow/core/framework/register_types.h"
 #include "tensorflow/core/framework/tensor_types.h"
 #include "tensorflow/core/platform/types.h"
 #include "tensorflow/core/util/gpu_kernel_helper.h"
-#include "third_party/eigen3/unsupported/Eigen/CXX11/Tensor"
 
 namespace tensorflow {
 
@@ -42,7 +42,7 @@ __global__ void CompareAndBitpackKernel(const int size, const T* threshold,
   // result for 4 blocks) followed by an appropriate shift and mask to
   // get the 8-bits of interest.
   const T thresh = ldg(threshold);
-  CUDA_1D_KERNEL_LOOP(i, size) {
+  GPU_1D_KERNEL_LOOP(i, size) {
     const T* block = input + 8 * i;
     output[i] =
         ((((ldg(block) > thresh) << 7)) | (((ldg(block + 1) > thresh) << 6)) |
@@ -62,7 +62,7 @@ __global__ void CompareAndBitpackKernel<bool>(const int size,
   // TODO(ebrevdo): Erich said: I think you could again have multiple
   // threads work on one block and use the ballot instruction to the
   // bit packing in one instruction.
-  CUDA_1D_KERNEL_LOOP(i, size) {
+  GPU_1D_KERNEL_LOOP(i, size) {
     const int64 block = ldg(reinterpret_cast<const int64*>(input + 8 * i));
     // NOTE(ebrevdo): This assumes memory is little-endian.
     output[i] =
@@ -82,7 +82,7 @@ __global__ void CompareAndBitpackKernel<float>(const int size,
                                                const float* input,
                                                uint8* output) {
   const float thresh = ldg(threshold);
-  CUDA_1D_KERNEL_LOOP(i, size) {
+  GPU_1D_KERNEL_LOOP(i, size) {
     const float4 block0 = ldg(reinterpret_cast<const float4*>(input + 8 * i));
     const float4 block1 =
         ldg(reinterpret_cast<const float4*>(input + 8 * i + 4));
@@ -99,7 +99,7 @@ __global__ void CompareAndBitpackKernel<double>(const int size,
                                                 const double* input,
                                                 uint8* output) {
   const double thresh = ldg(threshold);
-  CUDA_1D_KERNEL_LOOP(i, size) {
+  GPU_1D_KERNEL_LOOP(i, size) {
     const double2 block0 = ldg(reinterpret_cast<const double2*>(input + 8 * i));
     const double2 block1 =
         ldg(reinterpret_cast<const double2*>(input + 8 * i + 2));
@@ -122,7 +122,7 @@ __global__ void CompareAndBitpackKernel<double>(const int size,
       TTypes<uint8>::Matrix output) {                                          \
     const GPUDevice& d = c->eigen_device<GPUDevice>();                         \
     int64 total_count = output.size();                                         \
-    CudaLaunchConfig config = GetCudaLaunchConfig(total_count, d);             \
+    GpuLaunchConfig config = GetGpuLaunchConfig(total_count, d);             \
                                                                                \
     TF_CHECK_OK(CudaLaunchKernel(CompareAndBitpackKernel<T>,                   \
                                  config.block_count, config.thread_per_block,  \

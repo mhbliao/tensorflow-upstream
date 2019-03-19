@@ -17,9 +17,9 @@ limitations under the License.
 
 #define EIGEN_USE_GPU
 
+#include "third_party/eigen3/unsupported/Eigen/CXX11/Tensor"
 #include "tensorflow/core/kernels/inplace_ops_functor.h"
 #include "tensorflow/core/util/gpu_kernel_helper.h"
-#include "third_party/eigen3/unsupported/Eigen/CXX11/Tensor"
 
 namespace tensorflow {
 namespace functor {
@@ -30,7 +30,7 @@ template <typename T>
 __global__ void DoParallelConcatOpKernel(int nthreads, const int64 rows,
                                          const int64 cols, int32 loc,
                                          const T* src, T* dst) {
-  CUDA_1D_KERNEL_LOOP(idx, nthreads) {
+  GPU_1D_KERNEL_LOOP(idx, nthreads) {
     int64 c = idx % cols;
     int64 r = (loc % rows + rows) % rows;  // Guard index range.
     T* p = dst + r * cols + c;
@@ -43,7 +43,7 @@ template <typename T>
 Status DoParallelConcatUpdate(const Device& d, const Tensor& value, int32 loc,
                               Tensor* output) {
   const int64 nelem = value.NumElements();
-  CudaLaunchConfig cfg = GetCudaLaunchConfig(nelem, d);
+  GpuLaunchConfig cfg = GetGpuLaunchConfig(nelem, d);
   auto Toutput = output->flat_outer_dims<T>();
   const int64 nrows = Toutput.dimension(0);
   const int64 ncols = Toutput.dimension(1);
@@ -82,7 +82,7 @@ template <typename T, InplaceOpType op>
 __global__ void DoInplaceOpKernel(int nthreads, const int64 rows,
                                   const int64 cols, const int64 n, const T* src,
                                   const int32* rowids, T* dst) {
-  CUDA_1D_KERNEL_LOOP(idx, nthreads) {
+  GPU_1D_KERNEL_LOOP(idx, nthreads) {
     int64 r = idx / cols;
     int64 c = idx % cols;
     r = (rowids[r] % rows + rows) % rows;  // Guard index range.
@@ -106,7 +106,7 @@ template <typename T>
 void DoInplaceOp(const Device& d, InplaceOpType op, const Tensor& i,
                  const Tensor& v, Tensor* y) {
   const int64 nelem = v.NumElements();
-  CudaLaunchConfig cfg = GetCudaLaunchConfig(nelem, d);
+  GpuLaunchConfig cfg = GetGpuLaunchConfig(nelem, d);
   auto Ty = y->flat_outer_dims<T>();
   const int64 nrows = Ty.dimension(0);
   const int64 ncols = Ty.dimension(1);
@@ -141,7 +141,7 @@ template <bool>
 void DoInplaceOp(const Device& d, InplaceOpType op, const Tensor& i,
                  const Tensor& v, Tensor* y) {
   const int64 nelem = v.NumElements();
-  CudaLaunchConfig cfg = GetCudaLaunchConfig(nelem, d);
+  GpuLaunchConfig cfg = GetGpuLaunchConfig(nelem, d);
   auto Ty = y->flat_outer_dims<bool>();
   const int64 nrows = Ty.dimension(0);
   const int64 ncols = Ty.dimension(1);

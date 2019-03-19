@@ -28,7 +28,7 @@ template struct FusedBatchNormFreezeGrad<Eigen::GpuDevice, Eigen::half, float>;
 template <class T>
 __global__ void VarianceToInvVarianceKernel(int nthreads, const T* input,
                                             double epsilon, T* output) {
-  CUDA_1D_KERNEL_LOOP(index, nthreads) {
+  GPU_1D_KERNEL_LOOP(index, nthreads) {
     output[index] = rsqrt(input[index] + T(epsilon));
   }
 }
@@ -37,7 +37,7 @@ template <class T>
 void VarianceToInvVariance<T>::operator()(const Eigen::GpuDevice& d,
                                           const T* variance, double epsilon,
                                           int channels, T* inv_variance) {
-  CudaLaunchConfig config = GetCudaLaunchConfig(channels, d);
+  GpuLaunchConfig config = GetGpuLaunchConfig(channels, d);
   TF_CHECK_OK(CudaLaunchKernel(VarianceToInvVarianceKernel<T>,
                                config.block_count, config.thread_per_block, 0,
                                d.stream(), config.virtual_thread_count,
@@ -47,7 +47,7 @@ void VarianceToInvVariance<T>::operator()(const Eigen::GpuDevice& d,
 template <class T>
 __global__ void InvVarianceToVarianceKernel(int nthreads, double epsilon,
                                             int sample_size, T* variance) {
-  CUDA_1D_KERNEL_LOOP(index, nthreads) {
+  GPU_1D_KERNEL_LOOP(index, nthreads) {
     T inv_var = variance[index];
     T var = __fdividef(1, inv_var * inv_var) - T(epsilon);
     // This is for Bessel's correction
@@ -60,7 +60,7 @@ template <class T>
 void InvVarianceToVariance<T>::operator()(const Eigen::GpuDevice& d,
                                           double epsilon, int sample_size,
                                           int channels, T* variance) {
-  CudaLaunchConfig config = GetCudaLaunchConfig(channels, d);
+  GpuLaunchConfig config = GetGpuLaunchConfig(channels, d);
   TF_CHECK_OK(CudaLaunchKernel(InvVarianceToVarianceKernel<T>,
                                config.block_count, config.thread_per_block, 0,
                                d.stream(), config.virtual_thread_count, epsilon,

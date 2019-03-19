@@ -36,7 +36,7 @@ __global__ void S2D_NHWC(const int32 nthreads, const dtype* input_ptr,
                          const int input_depth, const int output_height,
                          const int output_width, const int output_depth,
                          dtype* output_ptr) {
-  CUDA_1D_KERNEL_LOOP(inp_idx, nthreads) {
+  GPU_1D_KERNEL_LOOP(inp_idx, nthreads) {
     // inp_idx = d + input_depth * (w + input_width * (h + input_height * b))
     const int d = inp_idx % input_depth;
     const int inp_idx2 = inp_idx / input_depth;
@@ -66,7 +66,7 @@ __global__ void S2D_NCHW(const int32 nthreads,
                          const int block_size, const int output_width,
                          const int input_depth_by_output_height,
                          dtype* __restrict__ output_ptr) {
-  CUDA_1D_KERNEL_LOOP(input_idx, nthreads) {
+  GPU_1D_KERNEL_LOOP(input_idx, nthreads) {
     // We assume both the input and output are packed NCHW tensors.
     // input_idx represents an index within the flattened input tensor.
     // We can consider the block width and height as extra tensor dimensions,
@@ -105,7 +105,7 @@ __global__ void S2D_NCHW_LOOP(const int32 nthreads,
                               const int input_depth_by_output_area,
                               const int output_depth_by_output_area,
                               dtype* __restrict__ output) {
-  CUDA_1D_KERNEL_LOOP(thread_idx, nthreads) {
+  GPU_1D_KERNEL_LOOP(thread_idx, nthreads) {
     // We will be converting the image from ordering:
     // n, iC, oY, bY, oX, bX   (== input index) to
     // n, bY, bX, iC, oY, oX   (== output index)
@@ -157,7 +157,7 @@ struct SpaceToDepthOpFunctor<GPUDevice, T, FORMAT_NHWC> {
     if (total_count == 0) {
       return;
     }
-    CudaLaunchConfig config = GetCudaLaunchConfig(total_count, d);
+    GpuLaunchConfig config = GetGpuLaunchConfig(total_count, d);
     TF_CHECK_OK(CudaLaunchKernel(
         S2D_NHWC<T>, config.block_count, config.thread_per_block, 0, d.stream(),
         config.virtual_thread_count, input.data(), block_size, batch_size,
@@ -191,7 +191,7 @@ struct SpaceToDepthOpFunctor<GPUDevice, T, FORMAT_NCHW> {
       if (total_count == 0) {
         return;
       }
-      CudaLaunchConfig config = GetCudaLaunchConfig(total_count, d);
+      GpuLaunchConfig config = GetGpuLaunchConfig(total_count, d);
       switch (block_size) {
         case 2:
           TF_CHECK_OK(CudaLaunchKernel(
@@ -222,7 +222,7 @@ struct SpaceToDepthOpFunctor<GPUDevice, T, FORMAT_NCHW> {
     if (total_count == 0) {
       return;
     }
-    CudaLaunchConfig config = GetCudaLaunchConfig(total_count, d);
+    GpuLaunchConfig config = GetGpuLaunchConfig(total_count, d);
     TF_CHECK_OK(CudaLaunchKernel(
         S2D_NCHW<T>, config.block_count, config.thread_per_block, 0, d.stream(),
         config.virtual_thread_count, input.data(), block_size, output_width,

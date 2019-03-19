@@ -26,7 +26,7 @@ namespace tensorflow {
 template <typename T>
 __global__ void UnaryClipCustomKernel(const int32 size_in, const T *in0,
                                       const T *in1, const T *in2, T *out) {
-  CUDA_1D_KERNEL_LOOP(i, size_in) {
+  GPU_1D_KERNEL_LOOP(i, size_in) {
     T value = in2[0] < in0[i] ? in2[0] : in0[i];
     out[i] = value < in1[0] ? in1[0] : value;
   }
@@ -36,7 +36,7 @@ template <typename T>
 __global__ void BinaryRightClipCustomKernel(const int32 size_in, const T *in0,
                                             const T *in1, const T *in2,
                                             T *out) {
-  CUDA_1D_KERNEL_LOOP(i, size_in) {
+  GPU_1D_KERNEL_LOOP(i, size_in) {
     T value = in2[i] < in0[i] ? in2[i] : in0[i];
     out[i] = value < in1[0] ? in1[0] : value;
   }
@@ -45,7 +45,7 @@ __global__ void BinaryRightClipCustomKernel(const int32 size_in, const T *in0,
 template <typename T>
 __global__ void BinaryLeftClipCustomKernel(const int32 size_in, const T *in0,
                                            const T *in1, const T *in2, T *out) {
-  CUDA_1D_KERNEL_LOOP(i, size_in) {
+  GPU_1D_KERNEL_LOOP(i, size_in) {
     T value = in2[0] < in0[i] ? in2[0] : in0[i];
     out[i] = value < in1[i] ? in1[i] : value;
   }
@@ -60,7 +60,7 @@ struct UnaryClipOp<GPUDevice, T> {
                   typename TTypes<T>::ConstFlat &in1_flat,
                   typename TTypes<T>::ConstFlat &in2_flat,
                   typename TTypes<T>::Flat &out_flat) const {
-    CudaLaunchConfig config = GetCudaLaunchConfig(in0_flat.size(), d);
+    GpuLaunchConfig config = GetGpuLaunchConfig(in0_flat.size(), d);
 
     TF_CHECK_OK(CudaLaunchKernel(
         UnaryClipCustomKernel<T>, config.block_count, config.thread_per_block,
@@ -76,7 +76,7 @@ struct BinaryRightClipOp<GPUDevice, T> {
                   typename TTypes<T>::ConstFlat &in1_flat,
                   typename TTypes<T>::ConstFlat &in2_flat,
                   typename TTypes<T>::Flat &out_flat) const {
-    CudaLaunchConfig config = GetCudaLaunchConfig(in0_flat.size(), d);
+    GpuLaunchConfig config = GetGpuLaunchConfig(in0_flat.size(), d);
 
     TF_CHECK_OK(CudaLaunchKernel(
         BinaryRightClipCustomKernel<T>, config.block_count,
@@ -92,7 +92,7 @@ struct BinaryLeftClipOp<GPUDevice, T> {
                   typename TTypes<T>::ConstFlat &in1_flat,
                   typename TTypes<T>::ConstFlat &in2_flat,
                   typename TTypes<T>::Flat &out_flat) const {
-    CudaLaunchConfig config = GetCudaLaunchConfig(in0_flat.size(), d);
+    GpuLaunchConfig config = GetGpuLaunchConfig(in0_flat.size(), d);
 
     TF_CHECK_OK(CudaLaunchKernel(
         BinaryLeftClipCustomKernel<T>, config.block_count,

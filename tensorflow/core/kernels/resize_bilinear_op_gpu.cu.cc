@@ -38,7 +38,7 @@ __global__ void ResizeBilinearKernel(const int32 nthreads, const T* images,
                                      int batch, int in_height, int in_width,
                                      int channels, int out_height,
                                      int out_width, float* output) {
-  CUDA_1D_KERNEL_LOOP(out_idx, nthreads) {
+  GPU_1D_KERNEL_LOOP(out_idx, nthreads) {
     // out_idx = c + channels * (x + out_width * (y + out_height * b))
     int idx = out_idx;
     const int c = idx % channels;
@@ -89,7 +89,7 @@ __global__ void ResizeBilinearGradKernel(
     const int32 nthreads, const float* input_grad, float height_scale,
     float width_scale, int batch, int original_height, int original_width,
     int channels, int resized_height, int resized_width, T* output_grad) {
-  CUDA_1D_KERNEL_LOOP(in_idx, nthreads) {
+  GPU_1D_KERNEL_LOOP(in_idx, nthreads) {
     // in_idx = c + channels * (x + resized_width * (y + resized_height * b))
     int idx = in_idx;
     const int c = idx % channels;
@@ -117,13 +117,13 @@ __global__ void ResizeBilinearGradKernel(
     const float x_lerp = original_x - floorf(original_x);
 
     const float dtop = (1 - y_lerp) * input_grad[in_idx];
-    CudaAtomicAdd(output_grad +
+    GpuAtomicAdd(output_grad +
                       ((b * original_height + top_y_index) * original_width +
                        left_x_index) *
                           channels +
                       c,
                   static_cast<T>((1 - x_lerp) * dtop));
-    CudaAtomicAdd(output_grad +
+    GpuAtomicAdd(output_grad +
                       ((b * original_height + top_y_index) * original_width +
                        right_x_index) *
                           channels +
@@ -131,13 +131,13 @@ __global__ void ResizeBilinearGradKernel(
                   static_cast<T>(x_lerp * dtop));
 
     const float dbottom = y_lerp * input_grad[in_idx];
-    CudaAtomicAdd(output_grad +
+    GpuAtomicAdd(output_grad +
                       ((b * original_height + bottom_y_index) * original_width +
                        left_x_index) *
                           channels +
                       c,
                   static_cast<T>((1 - x_lerp) * dbottom));
-    CudaAtomicAdd(output_grad +
+    GpuAtomicAdd(output_grad +
                       ((b * original_height + bottom_y_index) * original_width +
                        right_x_index) *
                           channels +
@@ -153,7 +153,7 @@ __global__ void LegacyResizeBilinearKernel(const int32 nthreads,
                                            int in_height, int in_width,
                                            int channels, int out_height,
                                            int out_width, float* output) {
-  CUDA_1D_KERNEL_LOOP(out_idx, nthreads) {
+  GPU_1D_KERNEL_LOOP(out_idx, nthreads) {
     // out_idx = c + channels * (x + out_width * (y + out_height * b))
     int idx = out_idx;
     const int c = idx % channels;
@@ -203,7 +203,7 @@ __global__ void LegacyResizeBilinearGradKernel(
     const int32 nthreads, const float* input_grad, float height_scale,
     float width_scale, int batch, int original_height, int original_width,
     int channels, int resized_height, int resized_width, T* output_grad) {
-  CUDA_1D_KERNEL_LOOP(in_idx, nthreads) {
+  GPU_1D_KERNEL_LOOP(in_idx, nthreads) {
     // in_idx = c + channels * (x + resized_width * (y + resized_height * b))
     int idx = in_idx;
     const int c = idx % channels;
@@ -228,13 +228,13 @@ __global__ void LegacyResizeBilinearGradKernel(
     const float x_lerp = original_x - left_x_index;
 
     const float dtop = (1 - y_lerp) * input_grad[in_idx];
-    CudaAtomicAdd(output_grad +
+    GpuAtomicAdd(output_grad +
                       ((b * original_height + top_y_index) * original_width +
                        left_x_index) *
                           channels +
                       c,
                   static_cast<T>((1 - x_lerp) * dtop));
-    CudaAtomicAdd(output_grad +
+    GpuAtomicAdd(output_grad +
                       ((b * original_height + top_y_index) * original_width +
                        right_x_index) *
                           channels +
@@ -242,13 +242,13 @@ __global__ void LegacyResizeBilinearGradKernel(
                   static_cast<T>(x_lerp * dtop));
 
     const float dbottom = y_lerp * input_grad[in_idx];
-    CudaAtomicAdd(output_grad +
+    GpuAtomicAdd(output_grad +
                       ((b * original_height + bottom_y_index) * original_width +
                        left_x_index) *
                           channels +
                       c,
                   static_cast<T>((1 - x_lerp) * dbottom));
-    CudaAtomicAdd(output_grad +
+    GpuAtomicAdd(output_grad +
                       ((b * original_height + bottom_y_index) * original_width +
                        right_x_index) *
                           channels +
@@ -279,7 +279,7 @@ struct ResizeBilinear<GPUDevice, T> {
     const int total_count = batch * out_height * out_width * channels;
     if (total_count == 0) return;
 
-    CudaLaunchConfig config = GetCudaLaunchConfig(total_count, d);
+    GpuLaunchConfig config = GetGpuLaunchConfig(total_count, d);
     if (half_pixel_centers) {
       TF_CHECK_OK(CudaLaunchKernel(
           ResizeBilinearKernel<T>, config.block_count, config.thread_per_block,
@@ -313,19 +313,19 @@ struct ResizeBilinearGrad<GPUDevice, T> {
     const int resized_width = input_grad.dimension(2);
 
     int total_count;
-    CudaLaunchConfig config;
+    GpuLaunchConfig config;
 
     // Initialize output_grad with all zeros.
     total_count = batch * original_height * original_width * channels;
     if (total_count == 0) return;
-    config = GetCudaLaunchConfig(total_count, d);
+    config = GetGpuLaunchConfig(total_count, d);
     TF_CHECK_OK(CudaLaunchKernel(
         SetZero<T>, config.block_count, config.thread_per_block, 0, d.stream(),
         config.virtual_thread_count, output_grad.data()));
 
     // Accumulate.
     total_count = batch * resized_height * resized_width * channels;
-    config = GetCudaLaunchConfig(total_count, d);
+    config = GetGpuLaunchConfig(total_count, d);
     if (half_pixel_centers) {
       TF_CHECK_OK(CudaLaunchKernel(
           ResizeBilinearGradKernel<T>, config.block_count,

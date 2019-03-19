@@ -140,7 +140,7 @@ void ConcatGPUImpl(const Eigen::GpuDevice& gpu_device,
                    const GpuDeviceArrayStruct<IntType>& output_scan,
                    bool fixed_size, int split_size,
                    typename TTypes<T, 2>::Matrix* output) {
-  auto config = GetCuda2DLaunchConfig(output->dimension(1),
+  auto config = GetGpu2DLaunchConfig(output->dimension(1),
                                       output->dimension(0), gpu_device);
 
   if (fixed_size) {

@@ -17,11 +17,11 @@ limitations under the License.
 
 #define EIGEN_USE_GPU
 
+#include "third_party/eigen3/unsupported/Eigen/CXX11/Tensor"
 #include "tensorflow/core/framework/register_types.h"
 #include "tensorflow/core/kernels/scatter_nd_op.h"
 #include "tensorflow/core/platform/types.h"
 #include "tensorflow/core/util/gpu_kernel_helper.h"
-#include "third_party/eigen3/unsupported/Eigen/CXX11/Tensor"
 
 namespace tensorflow {
 
@@ -44,14 +44,14 @@ struct LeftUpdate<T, scatter_nd_op::UpdateOp::ASSIGN> {
 template <typename T>
 struct LeftUpdate<T, scatter_nd_op::UpdateOp::ADD> {
   EIGEN_STRONG_INLINE EIGEN_DEVICE_FUNC void operator()(T* out, const T& val) {
-    CudaAtomicAdd(out, val);
+    GpuAtomicAdd(out, val);
   }
 };
 
 template <typename T>
 struct LeftUpdate<T, scatter_nd_op::UpdateOp::SUB> {
   EIGEN_STRONG_INLINE EIGEN_DEVICE_FUNC void operator()(T* out, const T& val) {
-    CudaAtomicSub(out, val);
+    GpuAtomicSub(out, val);
   }
 };
 
@@ -63,8 +63,8 @@ struct LeftUpdate<std::complex<T>, scatter_nd_op::UpdateOp::ADD> {
   EIGEN_STRONG_INLINE EIGEN_DEVICE_FUNC void operator()(
       std::complex<T>* out, const std::complex<T>& val) {
     T* ptr = reinterpret_cast<T*>(out);
-    CudaAtomicAdd(ptr, val.real());
-    CudaAtomicAdd(ptr, val.imag());
+    GpuAtomicAdd(ptr, val.real());
+    GpuAtomicAdd(ptr, val.imag());
   }
 };
 
@@ -86,7 +86,7 @@ __global__ void ScatterNdOpKernel(
     const Index slice_size) {
   auto update = LeftUpdate<T, op>();
 
-  CUDA_1D_KERNEL_LOOP(index, num_indices) {
+  GPU_1D_KERNEL_LOOP(index, num_indices) {
     Index i = 0;
     bool out_of_bounds = false;
 #pragma unroll
@@ -135,7 +135,7 @@ struct ScatterNdFunctor<GPUDevice, T, Index, op, IXDIM> {
       }
     }
 
-    CudaLaunchConfig config = GetCudaLaunchConfig(Toutput.size(), d);
+    GpuLaunchConfig config = GetGpuLaunchConfig(Toutput.size(), d);
 
     TF_CHECK_OK(CudaLaunchKernel(ScatterNdOpKernel<T, Index, op, IXDIM>,
                                  config.block_count, config.thread_per_block, 0,

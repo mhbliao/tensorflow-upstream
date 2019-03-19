@@ -35,7 +35,7 @@ __global__ void MaxPoolGradBackwardNoMaskNCDHW(
     const int stride_p, const int stride_h, const int stride_w, const int pad_p,
     const int pad_t, const int pad_l, const dtype* top_diff,
     dtype* bottom_diff) {
-  CUDA_1D_KERNEL_LOOP(index, nthreads) {
+  GPU_1D_KERNEL_LOOP(index, nthreads) {
     // First find out the index to the maximum, since we have no mask.
     int pw = index % pooled_width;
     int ph = (index / pooled_width) % pooled_height;
@@ -85,7 +85,7 @@ __global__ void MaxPoolGradBackwardNoMaskNDHWC(
     const int stride_p, const int stride_h, const int stride_w, const int pad_p,
     const int pad_t, const int pad_l, const dtype* top_diff,
     dtype* bottom_diff) {
-  CUDA_1D_KERNEL_LOOP(index, nthreads) {
+  GPU_1D_KERNEL_LOOP(index, nthreads) {
     // First find out the index to the maximum, since we have no mask.
     int n = index;
     int c = n % channels;
@@ -142,7 +142,7 @@ bool MaxPool3dGradBackward<T>::operator()(
     const T* top_diff, T* bottom_diff, const Eigen::GpuDevice& d) {
   int num_kernels =
       batch * channels * pooled_plane * pooled_height * pooled_width;
-  CudaLaunchConfig config = GetCudaLaunchConfig(num_kernels, d);
+  GpuLaunchConfig config = GetGpuLaunchConfig(num_kernels, d);
   if (data_format == FORMAT_NHWC) {
     TF_CHECK_OK(CudaLaunchKernel(
         MaxPoolGradBackwardNoMaskNDHWC<T>, config.block_count,

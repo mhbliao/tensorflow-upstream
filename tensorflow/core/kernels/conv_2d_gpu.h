@@ -191,7 +191,7 @@ __global__ void ShuffleInTensor3Simple(int nthreads, const T* input,
   // performance. Iterating over output will generate sequential writes and
   // random reads that performs better compared to sequential reads and random
   // writes.
-  CUDA_1D_KERNEL_LOOP(output_index, nthreads) {
+  GPU_1D_KERNEL_LOOP(output_index, nthreads) {
     Index<3> output_tensor_index = FlatToTensorIndex(output_index, output_dims);
 
     Index<3> input_tensor_index;
@@ -364,7 +364,7 @@ __global__ void PadInputCustomKernelNHWC(int nthreads, const T* input,
                                          Dimension<NDIMS> input_dims, T* output,
                                          Dimension<NDIMS> output_dims,
                                          Dimension<NDIMS - 2> padding_left) {
-  CUDA_1D_KERNEL_LOOP(index, nthreads) {
+  GPU_1D_KERNEL_LOOP(index, nthreads) {
     int output_index = index;
     Index<NDIMS> output_tensor_index =
         FlatToTensorIndex(output_index, output_dims);
@@ -393,7 +393,7 @@ __global__ void PadInputCustomKernelNCHW(int nthreads, const T* input,
                                          Dimension<NDIMS> input_dims, T* output,
                                          Dimension<NDIMS> output_dims,
                                          Dimension<NDIMS - 2> padding_left) {
-  CUDA_1D_KERNEL_LOOP(index, nthreads) {
+  GPU_1D_KERNEL_LOOP(index, nthreads) {
     int output_index = index;
     Index<NDIMS> output_tensor_index =
         FlatToTensorIndex(output_index, output_dims);
@@ -432,7 +432,7 @@ struct TransformFilter<GPUDevice, T, int, NDIMS> {
     }
     combined_dims[1] = in.dimension(NDIMS - 2);  // input filters
     combined_dims[2] = in.dimension(NDIMS - 1);  // output filters
-    CudaLaunchConfig config = GetCudaLaunchConfig(out.size(), d);
+    GpuLaunchConfig config = GetGpuLaunchConfig(out.size(), d);
 
     CHECK(dst_filter_format == FORMAT_OIHW)
         << "Unsupported output layout: " << ToString(dst_filter_format);
@@ -458,7 +458,7 @@ struct ReverseTransformFilter<GPUDevice, T, NDIMS> {
     for (int i = 3; i < NDIMS; ++i) {
       combined_dims[2] *= in.dimension(i);
     }
-    CudaLaunchConfig config = GetCudaLaunchConfig(out.size(), d);
+    GpuLaunchConfig config = GetGpuLaunchConfig(out.size(), d);
     TF_CHECK_OK(CudaLaunchKernel(ShuffleInTensor3Simple<T, 2, 1, 0>,
                                  config.block_count, config.thread_per_block, 0,
                                  d.stream(), config.virtual_thread_count,
@@ -477,7 +477,7 @@ struct PadInput<GPUDevice, T, int, NDIMS> {
                   const std::array<int, NDIMS - 2>& padding_right,
                   typename TTypes<T, NDIMS, int>::Tensor out,
                   TensorFormat format) {
-    CudaLaunchConfig config = GetCudaLaunchConfig(out.size(), d);
+    GpuLaunchConfig config = GetGpuLaunchConfig(out.size(), d);
     Dimension<NDIMS> input_dims;
     for (int i = 0; i < NDIMS; ++i) {
       input_dims[i] = in.dimension(i);
@@ -930,7 +930,7 @@ void RunSwapDimension1And2InTensor3(const GPUDevice& d, const T* input,
         d, input, input_dims, output, kMinDimensionToUseTiles);
   } else {
     int total_element_count = input_dims[0] * input_dims[1] * input_dims[2];
-    CudaLaunchConfig config = GetCudaLaunchConfig(total_element_count, d);
+    GpuLaunchConfig config = GetGpuLaunchConfig(total_element_count, d);
     TF_CHECK_OK(CudaLaunchKernel(ShuffleInTensor3Simple<T, 0, 2, 1, conjugate>,
                                  config.block_count, config.thread_per_block, 0,
                                  d.stream(), config.virtual_thread_count, input,
@@ -963,7 +963,7 @@ struct SwapDimension0And2InTensor3<GPUDevice, T, conjugate> {
                                static_cast<int>(combined_dims[1]),
                                static_cast<int>(combined_dims[2])};
     size_t total_size = combined_dims[0] * combined_dims[1] * combined_dims[2];
-    CudaLaunchConfig config = GetCudaLaunchConfig(total_size, d);
+    GpuLaunchConfig config = GetGpuLaunchConfig(total_size, d);
     TF_CHECK_OK(CudaLaunchKernel(ShuffleInTensor3Simple<T, 2, 1, 0, conjugate>,
                                  config.block_count, config.thread_per_block, 0,
                                  d.stream(), config.virtual_thread_count, in,

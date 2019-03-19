@@ -19,12 +19,12 @@ limitations under the License.
 
 #include <stdio.h>
 
+#include "third_party/eigen3/Eigen/Core"
 #include "tensorflow/core/framework/register_types.h"
 #include "tensorflow/core/framework/tensor_types.h"
 #include "tensorflow/core/kernels/relu_op_functor.h"
 #include "tensorflow/core/util/gpu_kernel_helper.h"
 #include "tensorflow/core/util/gpu_launch_config.h"
-#include "third_party/eigen3/Eigen/Core"
 
 namespace tensorflow {
 
@@ -104,7 +104,7 @@ struct ReluGrad<Device, Eigen::half> {
     if (count == 0) return;
     int32 half2_count = Eigen::divup(count, 2);
     constexpr int32 kThreadInBlock = 512;
-    CudaLaunchConfig config = GetCudaLaunchConfigFixedBlockSize(
+    GpuLaunchConfig config = GetGpuLaunchConfigFixedBlockSize(
         half2_count, d, ReluGradHalfKernel, 0, kThreadInBlock);
     TF_CHECK_OK(CudaLaunchKernel(
         ReluGradHalfKernel, config.block_count, config.thread_per_block, 0,
@@ -114,7 +114,7 @@ struct ReluGrad<Device, Eigen::half> {
 
 __global__ void Relu_int8x4_kernel(int vect_count, const int32* input,
                                    int32* output) {
-  CUDA_1D_KERNEL_LOOP(index, vect_count) {
+  GPU_1D_KERNEL_LOOP(index, vect_count) {
     output[index] = __vmaxs4(input[index], 0);
   }
 }
@@ -133,7 +133,7 @@ struct Relu<Device, qint8> {
 
     int32 vect_count = Eigen::divup(count, 4);
     constexpr int32 kThreadInBlock = 512;
-    CudaLaunchConfig config = GetCudaLaunchConfigFixedBlockSize(
+    GpuLaunchConfig config = GetGpuLaunchConfigFixedBlockSize(
         vect_count, d, Relu_int8x4_kernel, 0, kThreadInBlock);
     TF_CHECK_OK(CudaLaunchKernel(
         Relu_int8x4_kernel, config.block_count, config.thread_per_block, 0,

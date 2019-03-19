@@ -35,7 +35,7 @@ __global__ void TileKernel(int nthreads, const T* src, const int32* buf,
   const int32* in_strides = buf;
   const int32* out_strides = buf + ndims;
   const int32* in_dim_sizes = buf + ndims * 2;
-  CUDA_1D_KERNEL_LOOP(o_idx, nthreads) {
+  GPU_1D_KERNEL_LOOP(o_idx, nthreads) {
     int32 i_idx = 0;
     int32 t = o_idx;
     for (int i = 0; i < ndims; ++i) {
@@ -73,7 +73,7 @@ void TileSimple(const Eigen::GpuDevice& d, Tensor* out, const Tensor& in) {
   // Launch kernel to q[...] = p[...].
   const T* p = in.flat<T>().data();
   T* q = out->flat<T>().data();
-  CudaLaunchConfig cfg = GetCudaLaunchConfig(out_nelem, d);
+  GpuLaunchConfig cfg = GetGpuLaunchConfig(out_nelem, d);
   TF_CHECK_OK(
       CudaLaunchKernel(TileKernel<T>, cfg.block_count, cfg.thread_per_block, 0,
                        d.stream(), cfg.virtual_thread_count, p,

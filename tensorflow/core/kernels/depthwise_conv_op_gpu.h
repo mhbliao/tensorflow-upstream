@@ -19,13 +19,13 @@ limitations under the License.
 #if GOOGLE_CUDA
 #define EIGEN_USE_GPU
 
+#include "third_party/eigen3/unsupported/Eigen/CXX11/Tensor"
+#include "third_party/cub/util_ptx.cuh"
 #include "tensorflow/core/framework/op_kernel.h"
 #include "tensorflow/core/kernels/depthwise_conv_op.h"
 #include "tensorflow/core/platform/types.h"
 #include "tensorflow/core/util/gpu_kernel_helper.h"
 #include "tensorflow/core/util/tensor_format.h"
-#include "third_party/cub/util_ptx.cuh"
-#include "third_party/eigen3/unsupported/Eigen/CXX11/Tensor"
 
 #if defined(_MSC_VER) && !defined(__clang__)
 #define UNROLL
@@ -91,7 +91,7 @@ __global__ void __launch_bounds__(1024, 2)
   const int out_width = args.out_cols;
   const int out_depth = args.out_depth;
 
-  CUDA_1D_KERNEL_LOOP(thread_id, num_outputs) {
+  GPU_1D_KERNEL_LOOP(thread_id, num_outputs) {
     // Compute the indexes of this thread in the output.
     const int out_channel = thread_id % out_depth;
     const int out_col = (thread_id / out_depth) % out_width;
@@ -331,7 +331,7 @@ __global__ void __launch_bounds__(1024, 2)
   const int out_width = args.out_cols;
   const int out_depth = args.out_depth;
 
-  CUDA_1D_KERNEL_LOOP(thread_id, num_outputs) {
+  GPU_1D_KERNEL_LOOP(thread_id, num_outputs) {
     // Compute the indexes of this thread in the output.
     //
     // We want coalesced reads so we make sure that each warp reads
@@ -636,7 +636,7 @@ Status LaunchDepthwiseConv2dGPUSmall(OpKernelContext* ctx,
       kBlockDepth * (tile_pixels + filter_pixels) * sizeof(S);
   const int num_outputs = args.out_rows * args.out_cols * block_count;
   auto device = ctx->eigen_gpu_device();
-  CudaLaunchConfig config = GetCudaLaunchConfigFixedBlockSize(
+  GpuLaunchConfig config = GetGpuLaunchConfigFixedBlockSize(
       num_outputs, device, kernel, shared_memory_size,
       block_dim.x * block_dim.y * block_dim.z);
   TF_CHECK_OK(CudaLaunchKernel(kernel, config.block_count, block_dim,
@@ -760,8 +760,8 @@ Status LaunchDepthwiseConv2dGPU(OpKernelContext* ctx, const DepthwiseArgs& args,
   const int num_outputs =
       args.batch * args.out_rows * args.out_cols * args.out_depth;
   auto device = ctx->eigen_gpu_device();
-  CudaLaunchConfig config =
-      GetCudaLaunchConfig(num_outputs, device, kernel, 0, 0);
+  GpuLaunchConfig config =
+      GetGpuLaunchConfig(num_outputs, device, kernel, 0, 0);
   // The compile-time constant version runs faster with a single block.
   const int max_block_count = kKnownFilterWidth < 0 || kKnownFilterHeight < 0 ||
                                       kKnownDepthMultiplier < 0
@@ -835,7 +835,7 @@ __global__ void __launch_bounds__(640, 2)
   const int out_width = args.out_cols;
   const int out_depth = args.out_depth;
 
-  CUDA_1D_KERNEL_LOOP(thread_id, num_in_backprop) {
+  GPU_1D_KERNEL_LOOP(thread_id, num_in_backprop) {
     // Compute the indexes of this thread in the output.
     const int in_channel = thread_id % in_depth;
     const int in_col = (thread_id / in_depth) % in_width;
@@ -907,7 +907,7 @@ __global__ void __launch_bounds__(640, 2)
 
   // TODO(vrv): Consider assigning threads to output and using
   // atomics for accumulation, similar to the filter case.
-  CUDA_1D_KERNEL_LOOP(thread_id, num_in_backprop) {
+  GPU_1D_KERNEL_LOOP(thread_id, num_in_backprop) {
     // Compute the indexes of this thread in the input.
     const int in_col = thread_id % in_width;
     const int in_row = (thread_id / in_width) % in_height;
@@ -983,8 +983,8 @@ Status LaunchDepthwiseConv2dBackpropInputGPU(OpKernelContext* ctx,
   const int num_in_backprop =
       args.batch * args.in_rows * args.in_cols * args.in_depth;
   auto device = ctx->eigen_gpu_device();
-  CudaLaunchConfig config =
-      GetCudaLaunchConfig(num_in_backprop, device, kernel, 0, 0);
+  GpuLaunchConfig config =
+      GetGpuLaunchConfig(num_in_backprop, device, kernel, 0, 0);
   TF_CHECK_OK(CudaLaunchKernel(
       kernel, config.block_count, config.thread_per_block, 0, device.stream(),
       args, out_backprop, filter, in_backprop, num_in_backprop));
@@ -1055,7 +1055,7 @@ __global__ void __launch_bounds__(640, 2)
   const int out_width = args.out_cols;
   const int out_depth = args.out_depth;
 
-  CUDA_1D_KERNEL_LOOP(thread_id, num_out_backprop) {
+  GPU_1D_KERNEL_LOOP(thread_id, num_out_backprop) {
     // Compute the indexes of this thread in the output.
     const int out_channel = thread_id % out_depth;
     const int out_col = (thread_id / out_depth) % out_width;
@@ -1095,7 +1095,7 @@ __global__ void __launch_bounds__(640, 2)
               (dm + depth_multiplier *
                         (in_channel +
                          in_depth * (filter_col + filter_width * filter_row)));
-          CudaAtomicAdd(addr, partial_sum);
+          GpuAtomicAdd(addr, partial_sum);
         }
       }
     } else {
@@ -1126,7 +1126,7 @@ __global__ void __launch_bounds__(640, 2)
             // contention on the destination; 2. Have each thread compute one
             // gradient for an element in the filters. This should work well
             // when the input depth is big and filter size is not too small.
-            CudaAtomicAdd(addr, partial_sum);
+            GpuAtomicAdd(addr, partial_sum);
           }
         }
       }
@@ -1144,7 +1144,7 @@ __device__ __forceinline__ T WarpSumReduce(T val) {
   int zeros = sub_warp * kWidth;
   unsigned mask = ((1UL << kWidth) - 1) << zeros;
   for (int delta = kWidth / 2; delta > 0; delta /= 2) {
-    val += CudaShuffleXorSync(mask, val, delta);
+    val += GpuShuffleXorSync(mask, val, delta);
   }
   return val;
 }
@@ -1281,7 +1281,7 @@ __launch_bounds__(1024, 2) void DepthwiseConv2dBackpropFilterGPUKernelNHWCSmall(
           S val = out1 * tile_ptr[0] + out2 * tile_ptr[tile_offset];
           // Warp-accumulate pixels of the same depth and write to accumulator.
           for (int delta = 16; delta >= kBlockDepth; delta /= 2) {
-            val += CudaShuffleXorSync(active_threads, val, delta);
+            val += GpuShuffleXorSync(active_threads, val, delta);
           }
           if (!(thread_idx & 32 - kBlockDepth) /* lane_idx < kBlockDepth */) {
             *accum_ptr = val;
@@ -1307,7 +1307,7 @@ __launch_bounds__(1024, 2) void DepthwiseConv2dBackpropFilterGPUKernelNHWCSmall(
         // Warp-accumulate the pixels of the same depth from the accumulator.
         val = WarpSumReduce<kAccumPixels>(val);
         if (!(thread_idx & kAccumPixels - 1)) {
-          CudaAtomicAdd(filter_offset + filter, static_cast<T>(val));
+          GpuAtomicAdd(filter_offset + filter, static_cast<T>(val));
         }
       }
     }
@@ -1339,7 +1339,7 @@ __global__ void __launch_bounds__(640, 2)
   const int out_width = args.out_cols;
   const int out_depth = args.out_depth;
 
-  CUDA_1D_KERNEL_LOOP(thread_id, num_out_backprop) {
+  GPU_1D_KERNEL_LOOP(thread_id, num_out_backprop) {
     // Compute the indexes of this thread in the output.
     const int out_col = thread_id % out_width;
     const int out_row = (thread_id / out_width) % out_height;
@@ -1383,7 +1383,7 @@ __global__ void __launch_bounds__(640, 2)
               (dm + depth_multiplier *
                         (in_channel +
                          in_depth * (filter_col + filter_width * filter_row)));
-          CudaAtomicAdd(addr, partial_sum);
+          GpuAtomicAdd(addr, partial_sum);
         }
       }
     } else {
@@ -1415,7 +1415,7 @@ __global__ void __launch_bounds__(640, 2)
             // contention on the destination; 2. Have each thread compute one
             // gradient for an element in the filters. This should work well
             // when the input depth is big and filter size is not too small.
-            CudaAtomicAdd(addr, partial_sum);
+            GpuAtomicAdd(addr, partial_sum);
           }
         }
       }
@@ -1548,7 +1548,7 @@ __launch_bounds__(1024, 2) void DepthwiseConv2dBackpropFilterGPUKernelNCHWSmall(
           S val = out1 * tile_ptr[0] + out2 * tile_ptr[tile_offset];
           // Warp-accumulate pixels of the same depth and write to accumulator.
           for (int delta = 16 / kBlockDepth; delta > 0; delta /= 2) {
-            val += CudaShuffleXorSync(active_threads, val, delta);
+            val += GpuShuffleXorSync(active_threads, val, delta);
           }
           if (!(thread_idx & 32 / kBlockDepth - 1)) {
             *accum_ptr = val;  // kBlockDepth threads per warp.
@@ -1575,7 +1575,7 @@ __launch_bounds__(1024, 2) void DepthwiseConv2dBackpropFilterGPUKernelNCHWSmall(
         // Warp-accumulate pixels of the same depth from the accumulator.
         val = WarpSumReduce<kAccumPixels>(val);
         if (!(thread_idx & kAccumPixels - 1)) {
-          CudaAtomicAdd(filter_offset + filter, static_cast<T>(val));
+          GpuAtomicAdd(filter_offset + filter, static_cast<T>(val));
         }
       }
     }
@@ -1624,7 +1624,7 @@ Status TryLaunchDepthwiseConv2dBackpropFilterGPUSmall(
                                      " is not supported");
   }
   const int num_out_backprop = args.out_rows * args.out_cols * block_count;
-  CudaLaunchConfig config = GetCudaLaunchConfigFixedBlockSize(
+  GpuLaunchConfig config = GetGpuLaunchConfigFixedBlockSize(
       num_out_backprop, device, kernel, shared_memory_size,
       block_dim.x * block_dim.y * block_dim.z);
   TF_CHECK_OK(CudaLaunchKernel(kernel, config.block_count, block_dim,
@@ -1748,8 +1748,8 @@ Status LaunchDepthwiseConv2dBackpropFilterGPU(
   const int num_out_backprop =
       args.batch * args.out_rows * args.out_cols * args.out_depth;
   auto device = ctx->eigen_gpu_device();
-  CudaLaunchConfig config =
-      GetCudaLaunchConfig(num_out_backprop, device, kernel, 0, 0);
+  GpuLaunchConfig config =
+      GetGpuLaunchConfig(num_out_backprop, device, kernel, 0, 0);
   TF_CHECK_OK(CudaLaunchKernel(
       kernel, config.block_count, config.thread_per_block, 0, device.stream(),
       args, out_backprop, input, filter_backprop, num_out_backprop));

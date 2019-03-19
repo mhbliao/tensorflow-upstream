@@ -30,7 +30,7 @@ typedef Eigen::GpuDevice GPUDevice;
 template <typename T>
 __global__ void DiagCudaKernel(const int num_threads, const int64 size,
                                const T* in, T* out) {
-  CUDA_1D_KERNEL_LOOP(index, num_threads) {
+  GPU_1D_KERNEL_LOOP(index, num_threads) {
     // Fill the diagonal elements or set to zero in other place.
     if (index % (1 + size) == 0) {
       out[index] = in[index / (1 + size)];
@@ -49,7 +49,7 @@ struct DiagFunctor<GPUDevice, T> {
       return Status::OK();
     }
 
-    // CudaLaunchConfig uses an int for virtual_thread_count,
+    // GpuLaunchConfig uses an int for virtual_thread_count,
     // so this may overflow for `size*size` in extreme cases,
     // here is checking the multiplication overflow for integer.
     if (size && (int(size * size) / size) != size) {
@@ -59,8 +59,8 @@ struct DiagFunctor<GPUDevice, T> {
 
     // Launch the GPU kernel.
     const GPUDevice& device = context->eigen_device<GPUDevice>();
-    CudaLaunchConfig diag_config =
-        GetCudaLaunchConfig(virtual_thread_count, device);
+    GpuLaunchConfig diag_config =
+        GetGpuLaunchConfig(virtual_thread_count, device);
     TF_CHECK_OK(
         CudaLaunchKernel(DiagCudaKernel<T>, diag_config.block_count,
                          diag_config.thread_per_block, 0, device.stream(),
@@ -85,7 +85,7 @@ template struct DiagFunctor<GPUDevice, complex128>;
 template <typename T>
 __global__ void DiagPartCudaKernel(const int num_threads, const int64 size,
                                    const T* in, T* out) {
-  CUDA_1D_KERNEL_LOOP(index, num_threads) {
+  GPU_1D_KERNEL_LOOP(index, num_threads) {
     out[index] = in[(1 + size) * index];
   }
 }
@@ -101,7 +101,7 @@ struct DiagPartFunctor<GPUDevice, T> {
     const GPUDevice& device = context->eigen_device<GPUDevice>();
 
     // Extract the diagonal elements.
-    CudaLaunchConfig diag_config = GetCudaLaunchConfig(size, device);
+    GpuLaunchConfig diag_config = GetGpuLaunchConfig(size, device);
     TF_CHECK_OK(
         CudaLaunchKernel(DiagPartCudaKernel<T>, diag_config.block_count,
                          diag_config.thread_per_block, 0, device.stream(),

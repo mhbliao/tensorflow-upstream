@@ -21,9 +21,10 @@ limitations under the License.
 // See comment in segment_reduction_ops.h for more details.
 #include "tensorflow/core/util/gpu_kernel_helper.h"
 
-#include "tensorflow/core/framework/register_types.h"
 #include "tensorflow/core/kernels/segment_reduction_ops.h"
+#include "tensorflow/core/framework/register_types.h"
 #include "tensorflow/core/util/gpu_device_functions.h"
+
 
 namespace tensorflow {
 
@@ -56,7 +57,7 @@ __global__ void SortedSegmentSumCustomKernel(const Index input_outer_dim_size,
                                              const Index* segment_ids,
                                              const T* input, T* output,
                                              const Index total_stripe_count) {
-  for (int stripe_index : CudaGridRangeX(total_stripe_count)) {
+  for (int stripe_index : GpuGridRangeX(total_stripe_count)) {
     const Index segment_offset = stripe_index % inner_dim_size;
     const Index input_outer_dim_index_base =
         stripe_index / inner_dim_size * Index(OuterDimTileSize);
@@ -81,7 +82,7 @@ __global__ void SortedSegmentSumCustomKernel(const Index input_outer_dim_size,
         // decide whether to write result to global memory using atomic
         // operations
         if (last_output_segment_id == first_segment_id) {
-          CudaAtomicAdd(output + output_index, sum);
+          GpuAtomicAdd(output + output_index, sum);
         } else {
           *(output + output_index) = sum;
         }
@@ -96,7 +97,7 @@ __global__ void SortedSegmentSumCustomKernel(const Index input_outer_dim_size,
     // the following strip.
     const Index output_index =
         last_output_segment_id * inner_dim_size + segment_offset;
-    CudaAtomicAdd(output + output_index, sum);
+    GpuAtomicAdd(output + output_index, sum);
   }
 }
 
@@ -111,7 +112,7 @@ __global__ void UnsortedSegmentCustomKernel(const Index input_outer_dim_size,
                                             const T* input, T* output) {
   const Index input_total_size = input_outer_dim_size * inner_dim_size;
   const Index output_total_size = output_outer_dim_size * inner_dim_size;
-  for (int input_index : CudaGridRangeX(input_total_size)) {
+  for (int input_index : GpuGridRangeX(input_total_size)) {
     const Index input_segment_index = input_index / inner_dim_size;
     const Index segment_offset = input_index % inner_dim_size;
     const Index output_segment_index = segment_ids[input_segment_index];

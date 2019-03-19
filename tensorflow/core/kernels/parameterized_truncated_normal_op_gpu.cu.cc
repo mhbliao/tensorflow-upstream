@@ -23,11 +23,11 @@ limitations under the License.
 #include <stdio.h>
 #include <cmath>
 
+#include "third_party/eigen3/unsupported/Eigen/CXX11/Tensor"
 #include "tensorflow/core/framework/tensor_types.h"
 #include "tensorflow/core/lib/random/philox_random.h"
 #include "tensorflow/core/lib/random/random_distributions.h"
 #include "tensorflow/core/util/gpu_kernel_helper.h"
-#include "third_party/eigen3/unsupported/Eigen/CXX11/Tensor"
 
 #if defined(_MSC_VER) && !defined(__clang__)
 // msvc does not support unroll. One could try the loop pragma but we need to
@@ -58,7 +58,7 @@ __global__ void __launch_bounds__(1024)
                           bool single_minval, const T* maxvals,
                           bool single_maxval, int64 kMaxIterations) {
   const int32 max_samples_per_item = 2 * kMaxIterations;
-  // Initial offset as given by CUDA_1D_KERNEL_LOOP.
+  // Initial offset as given by GPU_1D_KERNEL_LOOP.
   const int32 initial_offset = blockIdx.x * blockDim.x + threadIdx.x;
   gen.Skip(max_samples_per_item * initial_offset);
   typedef random::UniformDistribution<random::PhiloxRandom, T> Uniform;
@@ -84,7 +84,7 @@ __global__ void __launch_bounds__(1024)
   const int32 samples_between_processed_elements =
       max_samples_per_item * (gridDim.x * blockDim.x);
 
-  CUDA_1D_KERNEL_LOOP(offset, num_elements) {
+  GPU_1D_KERNEL_LOOP(offset, num_elements) {
     // Track how many more samples we need to skip before we process the next
     // element.
     int32 remaining_samples = samples_between_processed_elements;
@@ -240,7 +240,7 @@ struct TruncatedNormalFunctor<GPUDevice, T> {
                   typename TTypes<T>::ConstFlat maxvals,
                   const random::PhiloxRandom& gen,
                   typename TTypes<T>::Flat output) {
-    const auto config = GetCudaLaunchConfig(num_elements, d);
+    const auto config = GetGpuLaunchConfig(num_elements, d);
 
     TF_CHECK_OK(CudaLaunchKernel(
         TruncatedNormalKernel<T>, config.block_count, config.thread_per_block,
