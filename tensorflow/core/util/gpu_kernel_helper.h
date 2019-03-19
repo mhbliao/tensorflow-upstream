@@ -22,7 +22,7 @@ limitations under the License.
 #include "tensorflow/core/util/gpu_launch_config.h"
 
 #if GOOGLE_CUDA
-#include "cuda/include/gpu_fp16.h"
+#include "cuda/include/cuda_fp16.h"
 #endif
 
 #if GOOGLE_CUDA
