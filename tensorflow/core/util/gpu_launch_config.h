@@ -348,7 +348,7 @@ inline Gpu2DLaunchConfig GetGpu2DLaunchConfig(
 // Returns a raw reference to the current cuda stream.  Required by a
 // number of kernel calls (for which StreamInterface* does not work), i.e.
 // CUB and certain cublas primitives.
-inline const cudaStream_t& GetGpuStream(OpKernelContext* context) {
+inline const cudaStream_t& GetCudaStream(OpKernelContext* context) {
   const cudaStream_t* ptr = CHECK_NOTNULL(
       reinterpret_cast<const cudaStream_t*>(context->op_device_context()
                                                 ->stream()
