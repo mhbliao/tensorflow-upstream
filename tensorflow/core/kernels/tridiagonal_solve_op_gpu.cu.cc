@@ -196,7 +196,7 @@ class TridiagonalSolveOpGpu : public LinearAlgebraOp<Scalar> {
   void SolveForSizeOneOrTwo(OpKernelContext* context, const Scalar* diagonals,
                             const Scalar* rhs, Scalar* output, int m, int k) {
     const Eigen::GpuDevice& device = context->eigen_device<Eigen::GpuDevice>();
-    CudaLaunchConfig cfg = GetCudaLaunchConfig(1, device);
+    GpuLaunchConfig cfg = GetGpuLaunchConfig(1, device);
     bool* not_invertible_dev;
     cudaMalloc(&not_invertible_dev, sizeof(bool));
     TF_CHECK_OK(CudaLaunchKernel(SolveForSizeOneOrTwoKernel<Scalar>,

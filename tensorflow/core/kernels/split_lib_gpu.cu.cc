@@ -145,7 +145,7 @@ __global__ void split_v_kernel(const T* input_ptr,
   // works well when there are many small segments and when the
   // segments are much longer
   IntType segment =
-      cuda_helper::upper_bound<IntType>(col_scan, num_outputs, gidx) - 1;
+      gpu_helper::upper_bound<IntType>(col_scan, num_outputs, gidx) - 1;
 
   IntType curr_offset = col_scan[segment];
   IntType curr_segment = segment;

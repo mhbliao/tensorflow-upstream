@@ -90,7 +90,7 @@ __global__ void concat_variable_kernel(
   // works well when there are many small segments and when the
   // segments are much longer
   IntType segment =
-      cuda_helper::upper_bound<IntType>(col_scan, num_inputs, gidx) - 1;
+      gpu_helper::upper_bound<IntType>(col_scan, num_inputs, gidx) - 1;
 
   IntType curr_offset = col_scan[segment];
   IntType curr_segment = segment;
