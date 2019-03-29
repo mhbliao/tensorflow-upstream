@@ -35,13 +35,21 @@ limitations under the License.
 #if GOOGLE_CUDA
 #define GPU_LAUNCH_KERNEL(kernel, block_count, threads_per_block, \
                           shared_mem, stream, ...) \
-  kernel<<<block_count, threads_per_block, shared_mem, stream>>>(__VA_ARGS__);
+  TF_CHECK_OK(tensorflow::CudaLaunchKernel(kernel, block_count, \
+                                           threads_per_block, shared_mem, \
+                                           stream, __VA_ARGS__));
 #elif TENSORFLOW_USE_ROCM
 #define GPU_LAUNCH_KERNEL(kernel, block_count, threads_per_block, \
                           shared_mem, stream, ...) \
-  hipLaunchKernelGGL(kernel, \
-    block_count, threads_per_block, shared_mem, stream, \
-    __VA_ARGS__);
+  do { \
+    auto result = hipLaunchKernelGGLEx(kernel, block_count, threads_per_block, \
+                                       shared_mem, stream, \
+                                       __VA_ARGS__); \
+    if (result != hipSuccess) { \
+      TF_CHECK_OK(errors::Internal(hipGetErrorString(result))); \
+    } \
+    TF_CHECK_OK(Status::OK()); \
+  } while (false);
 #endif
 
 // Deprecated, use 'for(int i : GpuGridRangeX(n))' instead.

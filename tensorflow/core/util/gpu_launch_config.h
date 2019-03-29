@@ -405,7 +405,6 @@ Status CudaLaunchKernel(void (*function)(Ts...), dim3 grid_dim, dim3 block_dim,
   }
   return Status::OK();
 }
-
 #endif 
 
 }  // namespace tensorflow
