@@ -160,6 +160,9 @@ struct Or {
 // each block does a grid strided loop and reduces its values locally
 // the case of one block is used for low latency small reductions to scalars
 template <typename T, typename outT, int num_threads, typename Op>
+#if TENSORFLOW_USE_ROCM
+__attribute__((amdgpu_flat_work_group_size(1, 1024)))___
+#endif
 __global__ void BlockReduceKernel(
     T in, outT out, int num_elems, Op op,
     typename std::iterator_traits<T>::value_type initVal) {
@@ -197,6 +200,9 @@ __global__ void BlockReduceKernel(
 
 // maps a warp to each row
 template <typename T, typename outT, typename Op>
+#if TENSORFLOW_USE_ROCM
+__attribute__((amdgpu_flat_work_group_size(1, 1024)))___
+#endif
 __global__ void RowReduceKernel(
     T in, outT out, int num_rows, int num_cols, Op op,
     typename std::iterator_traits<T>::value_type initVal) {
@@ -264,6 +270,9 @@ struct storage_type<std::complex<T2>> {
 // Works only if there are <= 16 columns
 // each warps sums over multiple rows at once
 template <typename T, typename outT, typename Op>
+#if TENSORFLOW_USE_ROCM
+__attribute__((amdgpu_flat_work_group_size(1, 1024)))___
+#endif
 __global__ void ColumnReduceMax16ColumnsKernel(
     T in, outT out, int num_rows, int num_cols, Op op,
     typename std::iterator_traits<T>::value_type initVal) {
@@ -330,6 +339,9 @@ __global__ void ColumnReduceMax16ColumnsKernel(
 
 // Maps each block to a column range TF_RED_WARPSIZE wide
 template <typename T, typename outT, typename Op>
+#if TENSORFLOW_USE_ROCM
+__attribute__((amdgpu_flat_work_group_size(1, 1024)))___
+#endif
 __global__ void ColumnReduceKernel(
     T in, outT out, int num_rows, int num_cols, Op op,
     typename std::iterator_traits<T>::value_type initVal) {
@@ -393,6 +405,9 @@ __global__ void ColumnReduceKernel(
 // segments cannot cross warp boundaries (mainly used for reducing the segments
 // that come from the Max16Columns column reduction kernel)
 template <typename T, typename outT, typename Op>
+#if TENSORFLOW_USE_ROCM
+__attribute__((amdgpu_flat_work_group_size(1, 1024)))___
+#endif
 __global__ void CleanupSegments(
     T partial_sums, outT out, int num_rows, int num_cols, int segment_size,
     Op op, typename std::iterator_traits<T>::value_type initVal) {
