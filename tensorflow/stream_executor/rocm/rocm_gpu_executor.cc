@@ -903,7 +903,7 @@ GpuExecutor::CreateDeviceDescription(int device_ordinal) {
 
   hipDeviceProp_t prop;
   if (GpuDriver::GetDeviceProperties(&prop, device_ordinal)) {
-    builder.set_threads_per_block_limit(prop.maxThreadsPerBlock);
+    builder.set_threads_per_block_limit(std::min(256, prop.maxThreadsPerBlock));
 
     ThreadDim thread_dim_limit;
     thread_dim_limit.x = prop.maxThreadsDim[0];

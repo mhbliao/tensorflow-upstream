@@ -40,3 +40,72 @@
      return res;
    }
  };
+--- a/unsupported/Eigen/CXX11/src/Tensor/TensorExecutor.h
++++ b/unsupported/Eigen/CXX11/src/Tensor/TensorExecutor.h
+@@ -357,7 +357,11 @@
+
+ template <typename Evaluator, typename StorageIndex>
+ __global__ void
++#if defined(EIGEN_HIP_DEVICE_COMPILE)
++__launch_bounds__(256)
++#else
+ __launch_bounds__(1024)
++#endif
+ EigenMetaKernel(Evaluator eval, StorageIndex size) {
+
+   const StorageIndex first_index = blockIdx.x * blockDim.x + threadIdx.x;
+@@ -375,7 +379,11 @@
+   const bool needs_assign = evaluator.evalSubExprsIfNeeded(NULL);
+   if (needs_assign) {
+
++#if defined(EIGEN_HIPCC)
++    const int block_size = 256;
++#else
+     const int block_size = device.maxGpuThreadsPerBlock();
++#endif
+     const int max_blocks = device.getNumGpuMultiProcessors() *
+                            device.maxGpuThreadsPerMultiProcessor() / block_size;
+     const StorageIndex size = array_prod(evaluator.dimensions());
+--- a/unsupported/Eigen/CXX11/src/Tensor/TensorReductionGpu.h
++++ b/unsupported/Eigen/CXX11/src/Tensor/TensorReductionGpu.h
+@@ -628,12 +628,17 @@
+     if (num_blocks > 1) {
+       // We initialize the outputs outside the reduction kernel when we can't be sure that there
+       // won't be a race conditions between multiple thread blocks.
+-      const int dyn_blocks = divup<int>(num_preserved_vals, 1024);
++#if defined(EIGEN_HIPCC)
++      const int init_block_size = 256;
++#else
++      const int init_block_size = 1024;
++#endif
++      const int dyn_blocks = divup<int>(num_preserved_vals, init_block_size);
+       const int max_blocks = device.getNumGpuMultiProcessors() *
+-                           device.maxGpuThreadsPerMultiProcessor() / 1024;
++                           device.maxGpuThreadsPerMultiProcessor() / init_block_size;
+       const int num_blocks = numext::mini<int>(max_blocks, dyn_blocks);
+       LAUNCH_GPU_KERNEL((ReductionInitKernel<OutputType, Index>),
+-                         num_blocks, 1024, 0, device, reducer.initialize(),
++                         num_blocks, init_block_size, 0, device, reducer.initialize(),
+                          num_preserved_vals, output);
+     }
+
+@@ -800,12 +805,17 @@
+     if (num_blocks > 1) {
+       // We initialize the outputs in the reduction kernel itself when we don't have to worry
+       // about race conditions between multiple thread blocks.
+-      const int dyn_blocks = divup<int>(num_preserved_vals, 1024);
++#if defined(EIGEN_HIPCC)
++      const int init_block_size = 256;
++#else
++      const int init_block_size = 1024;
++#endif
++      const int dyn_blocks = divup<int>(num_preserved_vals, init_block_size);
+       const int max_blocks = device.getNumGpuMultiProcessors() *
+-                             device.maxGpuThreadsPerMultiProcessor() / 1024;
++                             device.maxGpuThreadsPerMultiProcessor() / init_block_size;
+       const int num_blocks = numext::mini<int>(max_blocks, dyn_blocks);
+       LAUNCH_GPU_KERNEL((ReductionInitKernel<float, Index>),
+-                         num_blocks, 1024, 0, device, reducer.initialize(),
++                         num_blocks, init_block_size, 0, device, reducer.initialize(),
+                          num_preserved_vals, output);
+     }

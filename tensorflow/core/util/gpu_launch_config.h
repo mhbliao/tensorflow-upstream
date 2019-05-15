@@ -133,7 +133,11 @@ inline GpuLaunchConfig GetGpuLaunchConfig(int work_element_count,
   const int physical_thread_count = std::min(
       d.getNumGpuMultiProcessors() * d.maxGpuThreadsPerMultiProcessor(),
       virtual_thread_count);
+#if GOOGLE_CUDA
   const int thread_per_block = std::min(1024, d.maxGpuThreadsPerBlock());
+#elif TENSORFLOW_USE_ROCM
+  const int thread_per_block = std::min(256, d.maxGpuThreadsPerBlock());
+#endif
   const int block_count =
       std::min(DivUp(physical_thread_count, thread_per_block),
                d.getNumGpuMultiProcessors());
@@ -176,9 +180,9 @@ inline GpuLaunchConfig GetGpuLaunchConfig(int work_element_count,
   const int physical_thread_count = std::min(
       d.getNumGpuMultiProcessors() * d.maxGpuThreadsPerMultiProcessor(),
       work_element_count);
-  // Assume the kernel be simple enough that it is okay to use 1024 threads
+  // Assume the kernel be simple enough that it is okay to use 256 threads
   // per workgroup.
-  thread_per_block = std::min(1024, d.maxGpuThreadsPerBlock());
+  thread_per_block = std::min(256, d.maxGpuThreadsPerBlock());
   block_count = std::min(DivUp(physical_thread_count, thread_per_block),
                          d.getNumGpuMultiProcessors());
 #endif
@@ -224,9 +228,9 @@ inline GpuLaunchConfig GetGpuLaunchConfigFixedBlockSize(
   const int physical_thread_count = std::min(
       d.getNumGpuMultiProcessors() * d.maxGpuThreadsPerMultiProcessor(),
       work_element_count);
-  // Assume the kernel be simple enough that it is okay to use 1024 threads
+  // Assume the kernel be simple enough that it is okay to use 256 threads
   // per workgroup.
-  int thread_per_block = std::min(1024, d.maxGpuThreadsPerBlock());
+  int thread_per_block = std::min(256, d.maxGpuThreadsPerBlock());
   block_count = std::min(DivUp(physical_thread_count, thread_per_block),
                          d.getNumGpuMultiProcessors());
 #endif
@@ -324,7 +328,7 @@ inline Gpu3DLaunchConfig GetGpu3DLaunchConfig(
 
   const int physical_thread_count =
       d.getNumGpuMultiProcessors() * d.maxGpuThreadsPerMultiProcessor();
-  thread_per_block = std::min(1024, d.maxGpuThreadsPerBlock());
+  thread_per_block = std::min(256, d.maxGpuThreadsPerBlock());
   block_count = std::min(DivUp(physical_thread_count, thread_per_block),
                          d.getNumGpuMultiProcessors());
 #endif

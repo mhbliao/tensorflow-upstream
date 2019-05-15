@@ -61,7 +61,11 @@ template <typename T>
 struct CheckNumericsLaunch {
   void Run(const GPUDevice& d, const T* data, int size,
            int abnormal_detected[2]) {
+#if GOOGLE_CUDA
     const int32 block_size = d.maxGpuThreadsPerBlock();
+#elif TENSORFLOW_USE_ROCM
+    const int32 block_size = 256;
+#endif
     const int32 num_blocks =
         (d.getNumGpuMultiProcessors() * d.maxGpuThreadsPerMultiProcessor()) /
         block_size;

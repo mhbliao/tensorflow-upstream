@@ -375,7 +375,7 @@ void AnnotateFunctionAsGpuKernel(llvm::Module* module, llvm::Function* func,
 
   } else if (target_triple.getArch() == llvm::Triple::amdgcn) {
     func->setCallingConv(llvm::CallingConv::AMDGPU_KERNEL);
-    func->addFnAttr("amdgpu-flat-work-group-size", "1, 1024");
+    func->addFnAttr("amdgpu-flat-work-group-size", "1, 256");
   }
 }
 

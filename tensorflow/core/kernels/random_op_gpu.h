@@ -202,7 +202,11 @@ PHILOX_DEVICE_INLINE void FillPhiloxRandomKernel<Distribution, true>::Run(
 
 // A simple launch pad to call the correct function templates to fill the data
 template <class Distribution>
+#if GOOGLE_CUDA
 __global__ void __launch_bounds__(1024)
+#elif TENSORFLOW_USE_ROCM
+__global__ void __launch_bounds__(256)
+#endif
     FillPhiloxRandomKernelLaunch(random::PhiloxRandom base_gen,
                                  typename Distribution::ResultElementType* data,
                                  int64 size, Distribution dist) {
@@ -217,7 +221,11 @@ void FillPhiloxRandom<GPUDevice, Distribution>::operator()(
     OpKernelContext*, const GPUDevice& d, random::PhiloxRandom gen,
     typename Distribution::ResultElementType* data, int64 size,
     Distribution dist) {
+#if GOOGLE_CUDA
   const int32 block_size = d.maxGpuThreadsPerBlock();
+#elif TENSORFLOW_USE_ROCM
+  const int32 block_size = 256;
+#endif
   const int32 num_blocks =
       (d.getNumGpuMultiProcessors() * d.maxGpuThreadsPerMultiProcessor()) /
       block_size;

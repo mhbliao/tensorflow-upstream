@@ -752,7 +752,11 @@ const std::vector<std::pair<int, int>>& GetTileSizesFrontier() {
   // manner the first time GetTileSizesFrontier<N> is called.
   static auto* frontier = [] {
     auto* frontier = new std::vector<std::pair<int, int>>();
+#if GOOGLE_CUDA
     const int kMaxLongSideLen = 1024;
+#elif TENSORFLOW_USE_ROCM
+    const int kMaxLongSideLen = 256;
+#endif
     const int kMaxShortSideLen = 15;
     for (int long_side = 32; long_side <= kMaxLongSideLen; long_side *= 2) {
       for (int short_side = 2; short_side <= kMaxShortSideLen;
@@ -925,9 +929,10 @@ void RunSwapDimension1And2InTensor3(const GPUDevice& d, const T* input,
         dim3(total_tiles_count), dim3(kNumThreads), 0, d.stream(),
         input, input_dims, output));
 
-  } else if (narrow_matrix) {
-    SwapDimension1And2InTensor3WithNarrowMatrices<T, conjugate>(
-        d, input, input_dims, output, kMinDimensionToUseTiles);
+  // XXX FIXME: Find the correct tile size frontiers
+  //} else if (narrow_matrix) {
+  //  SwapDimension1And2InTensor3WithNarrowMatrices<T, conjugate>(
+  //      d, input, input_dims, output, kMinDimensionToUseTiles);
   } else {
     int total_element_count = input_dims[0] * input_dims[1] * input_dims[2];
     GpuLaunchConfig config = GetGpuLaunchConfig(total_element_count, d);

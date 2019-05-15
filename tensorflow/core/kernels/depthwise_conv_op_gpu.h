@@ -82,7 +82,11 @@ enum DepthwiseConv2dDirection { DIRECTION_FORWARD, DIRECTION_BACKWARD };
 // in NHWC format.
 template <typename T, int kKnownFilterWidth, int kKnownFilterHeight,
           int kKnownDepthMultiplier>
+#if GOOGLE_CUDA
 __global__ void __launch_bounds__(1024, 2)
+#elif TENSORFLOW_USE_ROCM
+__global__ void __launch_bounds__(128, 2)
+#endif
     DepthwiseConv2dGPUKernelNHWC(const DepthwiseArgs args, const T* input,
                                  const T* filter, T* output, int num_outputs) {
   typedef typename detail::PseudoHalfType<T>::Type S;
@@ -186,7 +190,11 @@ __global__ void __launch_bounds__(1024, 2)
 template <typename T, DepthwiseConv2dDirection kDirection,
           int kKnownFilterWidth, int kKnownFilterHeight, int kBlockDepth,
           bool kKnownEvenHeight>
+#if GOOGLE_CUDA
 __global__ __launch_bounds__(1024, 2) void DepthwiseConv2dGPUKernelNHWCSmall(
+#elif TENSORFLOW_USE_ROCM
+__global__ __launch_bounds__(128, 2) void DepthwiseConv2dGPUKernelNHWCSmall(
+#endif
     const DepthwiseArgs args, const T* input, const T* filter, T* output) {
   typedef typename detail::PseudoHalfType<T>::Type S;
   assert(CanLaunchDepthwiseConv2dGPUSmall(args));
@@ -330,7 +338,11 @@ __global__ __launch_bounds__(1024, 2) void DepthwiseConv2dGPUKernelNHWCSmall(
 // in NCHW format.
 template <typename T, int kKnownFilterWidth, int kKnownFilterHeight,
           int kKnownDepthMultiplier>
+#if GOOGLE_CUDA
 __global__ void __launch_bounds__(1024, 2)
+#elif TENSORFLOW_USE_ROCM
+__global__ void __launch_bounds__(128, 2)
+#endif
     DepthwiseConv2dGPUKernelNCHW(const DepthwiseArgs args, const T* input,
                                  const T* filter, T* output, int num_outputs) {
   typedef typename detail::PseudoHalfType<T>::Type S;
@@ -478,7 +490,11 @@ __global__ void __launch_bounds__(1024, 2)
 template <typename T, DepthwiseConv2dDirection kDirection,
           int kKnownFilterWidth, int kKnownFilterHeight, int kBlockDepth,
           bool kKnownEvenHeight>
+#if GOOGLE_CUDA
 __global__ __launch_bounds__(1024, 2) void DepthwiseConv2dGPUKernelNCHWSmall(
+#elif TENSORFLOW_USE_ROCM
+__global__ __launch_bounds__(128, 2) void DepthwiseConv2dGPUKernelNCHWSmall(
+#endif
     const DepthwiseArgs args, const T* input, const T* filter, T* output) {
   typedef typename detail::PseudoHalfType<T>::Type S;
   assert(CanLaunchDepthwiseConv2dGPUSmall(args));
@@ -807,7 +823,11 @@ void LaunchDepthwiseConvOp<GpuDevice, T>::operator()(OpKernelContext* ctx,
 // A GPU kernel to compute the depthwise convolution backprop w.r.t. input.
 template <typename T, int kKnownFilterWidth, int kKnownFilterHeight,
           int kKnownDepthMultiplier>
+#if GOOGLE_CUDA
 __global__ void __launch_bounds__(640, 2)
+#elif TENSORFLOW_USE_ROCM
+__global__ void __launch_bounds__(80, 2)
+#endif
     DepthwiseConv2dBackpropInputGPUKernelNHWC(const DepthwiseArgs args,
                                               const T* out_backprop,
                                               const T* filter, T* in_backprop,
@@ -877,7 +897,11 @@ __global__ void __launch_bounds__(640, 2)
 
 template <typename T, int kKnownFilterWidth, int kKnownFilterHeight,
           int kKnownDepthMultiplier>
+#if GOOGLE_CUDA
 __global__ void __launch_bounds__(640, 2)
+#elif TENSORFLOW_USE_ROCM
+__global__ void __launch_bounds__(80, 2)
+#endif
     DepthwiseConv2dBackpropInputGPUKernelNCHW(const DepthwiseArgs args,
                                               const T* out_backprop,
                                               const T* filter, T* in_backprop,
@@ -1028,7 +1052,11 @@ void LaunchDepthwiseConvBackpropInputOp<GpuDevice, T>::operator()(
 // is non-trivial as the partial sums are added directly to the output
 template <typename T, int kKnownFilterWidth, int kKnownFilterHeight,
           int kKnownDepthMultiplier>
+#if GOOGLE_CUDA
 __global__ void __launch_bounds__(640, 2)
+#elif TENSORFLOW_USE_ROCM
+__global__ void __launch_bounds__(80, 2)
+#endif
     DepthwiseConv2dBackpropFilterGPUKernelNHWC(const DepthwiseArgs args,
                                                const T* out_backprop,
                                                const T* input,
@@ -1166,7 +1194,11 @@ __device__ inline T WarpSumReduce(T val) {
 template <typename T, int kKnownFilterWidth, int kKnownFilterHeight,
           int kBlockDepth, int kAccumPixels>
 __global__
+#if GOOGLE_CUDA
 __launch_bounds__(1024, 2) void DepthwiseConv2dBackpropFilterGPUKernelNHWCSmall(
+#elif TENSORFLOW_USE_ROCM
+__launch_bounds__(128, 2) void DepthwiseConv2dBackpropFilterGPUKernelNHWCSmall(
+#endif
     const DepthwiseArgs args, const T* output, const T* input, T* filter) {
   typedef typename detail::PseudoHalfType<T>::Type S;
   assert(CanLaunchDepthwiseConv2dBackpropFilterGPUSmall(args, blockDim.z));
@@ -1321,7 +1353,11 @@ __launch_bounds__(1024, 2) void DepthwiseConv2dBackpropFilterGPUKernelNHWCSmall(
 // A Gpu kernel to compute the depthwise convolution backprop w.r.t. filter.
 template <typename T, int kKnownFilterWidth, int kKnownFilterHeight,
           int kKnownDepthMultiplier>
+#if GOOGLE_CUDA
 __global__ void __launch_bounds__(640, 2)
+#elif TENSORFLOW_USE_ROCM
+__global__ void __launch_bounds__(80, 2)
+#endif
     DepthwiseConv2dBackpropFilterGPUKernelNCHW(const DepthwiseArgs args,
                                                const T* out_backprop,
                                                const T* input,
@@ -1443,7 +1479,11 @@ __global__ void __launch_bounds__(640, 2)
 template <typename T, int kKnownFilterWidth, int kKnownFilterHeight,
           int kBlockDepth, int kAccumPixels>
 __global__
+#if GOOGLE_CUDA
 __launch_bounds__(1024, 2) void DepthwiseConv2dBackpropFilterGPUKernelNCHWSmall(
+#elif TENSORFLOW_USE_ROCM
+__launch_bounds__(128, 2) void DepthwiseConv2dBackpropFilterGPUKernelNCHWSmall(
+#endif
     const DepthwiseArgs args, const T* output, const T* input, T* filter) {
   typedef typename detail::PseudoHalfType<T>::Type S;
   assert(CanLaunchDepthwiseConv2dBackpropFilterGPUSmall(args, blockDim.x));

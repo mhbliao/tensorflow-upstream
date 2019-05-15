@@ -50,7 +50,11 @@ typedef Eigen::GpuDevice GPUDevice;
 
 template <typename T>
 
+#if GOOGLE_CUDA
 __global__ void __launch_bounds__(1024)
+#elif TENSORFLOW_USE_ROCM
+__global__ void __launch_bounds__(256)
+#endif
     TruncatedNormalKernel(random::PhiloxRandom gen, T* data, int64 num_batches,
                           int64 samples_per_batch, int64 num_elements,
                           const T* means, bool single_mean, const T* stddevs,
