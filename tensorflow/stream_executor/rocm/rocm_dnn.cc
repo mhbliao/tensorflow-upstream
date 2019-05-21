@@ -2758,6 +2758,10 @@ port::Status MIOpenSupport::DoPrepareForConvolution(
     wrap::miopenSetAllocator(miopen.handle(), nullptr, nullptr, nullptr);
 
     scratch_memory_size = preference.memory;
+
+    // Reuse the scratch_memory_temp in actual convolution
+    *scratch_memory = scratch_memory_temp;
+    return port::Status::OK();
   } else {
     // An algorithm has been specified.
     *algorithm_desc = *algo_desc;

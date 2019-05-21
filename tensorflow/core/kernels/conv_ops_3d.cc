@@ -410,7 +410,7 @@ struct LaunchConvOp<GPUDevice, T> {
                        transformed_output.template flat<T>().size());
 
     static int64 ConvolveScratchSize = GetDnnWorkspaceLimit(
-        "TF_CUDNN_WORKSPACE_LIMIT_IN_MB", 1LL << 32);  // 4GB by default
+        "TF_CUDNN_WORKSPACE_LIMIT_IN_MB", 3LL << 31);  // 6GB by default
 
     int device_id = stream->parent()->device_ordinal();
     DataType dtype = input.dtype();
@@ -478,6 +478,22 @@ struct LaunchConvOp<GPUDevice, T> {
                              filter_desc, output_desc, conv_desc,
                              stream->parent(), results);
       OP_REQUIRES_OK(ctx, BestCudnnConvAlgorithm(results, &algorithm_config));
+
+      // Run convolution according to auto tune result
+      DnnScratchAllocator scratch_allocator(ConvolveScratchSize, ctx);
+      bool cudnn_launch_status =
+          stream
+              ->ThenConvolveWithAlgorithm(input_desc, input_ptr, filter_desc,
+                                          filter_ptr, conv_desc, output_desc,
+                                          &output_ptr, &scratch_allocator,
+                                          algorithm_config, nullptr)
+              .ok();
+
+      if (!cudnn_launch_status) {
+        ctx->SetStatus(errors::Internal(
+            "cuDNN launch failure : input shape(", input.shape().DebugString(),
+            ") filter shape(", filter.shape().DebugString(), ")"));
+      }
 #elif TENSORFLOW_USE_ROCM
       ProfileResult best_result;
       LOG(INFO) << "running auto-tune for convolution";
@@ -495,21 +511,22 @@ struct LaunchConvOp<GPUDevice, T> {
       algorithm_config.set_scratch_size(best_result.scratch_size());
 #endif
       AutoTuneConv3d::GetInstance()->Insert(conv_parameters, algorithm_config);
-    }
+    } else {
 
-    DnnScratchAllocator scratch_allocator(ConvolveScratchSize, ctx);
-    bool cudnn_launch_status =
-        stream
-            ->ThenConvolveWithAlgorithm(input_desc, input_ptr, filter_desc,
-                                        filter_ptr, conv_desc, output_desc,
-                                        &output_ptr, &scratch_allocator,
-                                        algorithm_config, nullptr)
-            .ok();
+      DnnScratchAllocator scratch_allocator(ConvolveScratchSize, ctx);
+      bool cudnn_launch_status =
+          stream
+              ->ThenConvolveWithAlgorithm(input_desc, input_ptr, filter_desc,
+                                          filter_ptr, conv_desc, output_desc,
+                                          &output_ptr, &scratch_allocator,
+                                          algorithm_config, nullptr)
+              .ok();
 
-    if (!cudnn_launch_status) {
-      ctx->SetStatus(errors::Internal(
-          "cuDNN launch failure : input shape(", input.shape().DebugString(),
-          ") filter shape(", filter.shape().DebugString(), ")"));
+      if (!cudnn_launch_status) {
+        ctx->SetStatus(errors::Internal(
+            "cuDNN launch failure : input shape(", input.shape().DebugString(),
+            ") filter shape(", filter.shape().DebugString(), ")"));
+      }
     }
 
     if (data_format == FORMAT_NHWC) {
