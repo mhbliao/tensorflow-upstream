@@ -66,7 +66,7 @@ struct HistogramFixedWidthFunctor<GPUDevice, T, Tout> {
     int num_levels = levels.size();
     T* d_levels = levels.data();
     int num_samples = values.size();
-    const cudaStream_t& stream = GetCudaStream(context);
+    const cudaStream_t& stream = GetGpuStream(context);
 
     // The first HistogramRange is to obtain the temp storage size required
     // with d_temp_storage = NULL passed to the call.

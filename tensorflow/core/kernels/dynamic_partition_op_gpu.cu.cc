@@ -326,7 +326,7 @@ class DynamicPartitionOpGPU : public AsyncOpKernel {
                  Tensor* indices_out, DoneCallback done) {
     int32 N = partitions->NumElements();
     const GPUDevice& device = c->eigen_device<GPUDevice>();
-    const cudaStream_t& cu_stream = GetCudaStream(c);
+    const cudaStream_t& cu_stream = GetGpuStream(c);
 
     // Initialize the indices_in tensor using the Range GPU kernel.
     RangeInit(device, 0, 1, N, indices_in->flat<int32>());
@@ -359,7 +359,7 @@ class DynamicPartitionOpGPU : public AsyncOpKernel {
                          Tensor* partition_count, Tensor* indices_out,
                          DoneCallback done) {
     const GPUDevice& device = c->eigen_device<GPUDevice>();
-    const cudaStream_t& cu_stream = GetCudaStream(c);
+    const cudaStream_t& cu_stream = GetGpuStream(c);
     int32 N = partitions->NumElements();
     Tensor indices_in;
     Tensor partitions_out;
