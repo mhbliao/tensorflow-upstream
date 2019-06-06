@@ -61,6 +61,8 @@ class Thunk {
     kTriangularSolve,
     kTuple,
     kWhile,
+
+    kEmpty, // empty thunk
   };
 
   // The hlo_instruction argument is meant to be the instruction this thunk was

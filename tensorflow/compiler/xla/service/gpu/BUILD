@@ -368,6 +368,8 @@ cc_library(
         "triangular_solve_thunk.cc",
         "tuple_thunk.cc",
         "while_thunk.cc",
+
+        "empty_thunk.cc",
     ] + if_cuda_is_configured([
         "cholesky_thunk.cc",
         "nvptx_executable.cc"
@@ -391,6 +393,8 @@ cc_library(
         "triangular_solve_thunk.h",
         "tuple_thunk.h",
         "while_thunk.h",
+
+        "empty_thunk.h",
     ] + if_cuda_is_configured([
          "cholesky_thunk.h",
          "nvptx_executable.h"
@@ -927,7 +931,10 @@ cc_library(
             "nvptx_compiler.h",
             "cudnn_batchnorm_rewriter.h",
             ])
-           + if_rocm_is_configured(["amdgpu_compiler.h"]),
+           + if_rocm_is_configured([
+            "amdgpu_compiler.h",
+            "empty_rewriter.h",
+            ]),
     deps = [
         ":cudnn_conv_pad_for_tensor_cores",
         ":cudnn_conv_padding_legalization",
@@ -1010,8 +1017,22 @@ cc_library(
         "//tensorflow/stream_executor/cuda:cuda_diagnostics",
     ])
     + if_rocm_is_configured([":miopen_conv_algorithm_picker",
+                             ":empty_rewriter",
                             "//tensorflow/core:rocm_rocdl_path",]),
     alwayslink = True,  # Contains compiler registration
+)
+
+cc_library(
+    name = "empty_rewriter",
+    srcs = ["empty_rewriter.cc"],
+    hdrs = ["empty_rewriter.h"],
+    deps = [
+        ":ir_emission_utils",
+        "//tensorflow/compiler/xla:literal",
+        "//tensorflow/compiler/xla:literal_util",
+        "//tensorflow/compiler/xla/service:hlo",
+        "//tensorflow/compiler/xla/service:hlo_pass",
+    ],
 )
 
 cc_library(

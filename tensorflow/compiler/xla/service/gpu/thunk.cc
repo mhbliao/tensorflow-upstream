@@ -58,6 +58,9 @@ absl::string_view ThunkKindToString(Thunk::Kind kind) {
       return "kTuple";
     case Thunk::kWhile:
       return "kWhile";
+
+    case Thunk::kEmpty:
+      return "kEmpty";
   }
 }
 

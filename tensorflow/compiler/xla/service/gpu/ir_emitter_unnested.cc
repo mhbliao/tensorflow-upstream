@@ -47,6 +47,7 @@ limitations under the License.
 #include "tensorflow/compiler/xla/service/gpu/copy_thunk.h"
 #include "tensorflow/compiler/xla/service/gpu/cudnn_batchnorm_thunk.h"
 #include "tensorflow/compiler/xla/service/gpu/cudnn_conv_runner.h"
+#include "tensorflow/compiler/xla/service/gpu/empty_thunk.h"
 #include "tensorflow/compiler/xla/service/gpu/fft_thunk.h"
 #include "tensorflow/compiler/xla/service/gpu/for_thunk.h"
 #include "tensorflow/compiler/xla/service/gpu/gemm_thunk.h"
@@ -509,6 +510,11 @@ Status IrEmitterUnnested::HandleCustomCall(HloInstruction* custom_call) {
     return Status::OK();
   }
 #endif
+
+  if (custom_call->custom_call_target() == kEmptyCallTarget) {
+    AddThunkToThunkSequence(absl::make_unique<EmptyThunk>(custom_call));
+    return Status::OK();
+  }
 
   return IrEmitter::HandleCustomCall(custom_call);
 }
