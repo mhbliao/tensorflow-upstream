@@ -52,6 +52,8 @@ absl::string_view ThunkKindToString(Thunk::Kind kind) {
       return "kMemzero";
     case Thunk::kOutfeed:
       return "kOutfeed";
+    case Thunk::kReduce:
+      return "kReduce";
     case Thunk::kSequential:
       return "kSequential";
     case Thunk::kTriangularSolve:
