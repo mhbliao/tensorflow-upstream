@@ -34,32 +34,52 @@ using absl::nullopt;
 
 class SampleTextTest : public HloTestBase {};
 
-TEST_F(SampleTextTest, Axpy) {
-  const string& hlo_string = R"(
-HloModule axpy_module:
-ENTRY %axpy.v5 (alpha: f32[], x: f32[2,4], y: f32[2,4]) -> f32[2,4] {
-  %alpha = f32[] parameter(0)
-  %broadcast = f32[2,4]{1,0} broadcast(f32[] %alpha), dimensions={}
-  %x = f32[2,4]{1,0} parameter(1)
-  %multiply = f32[2,4]{1,0} multiply(f32[2,4]{1,0} %broadcast, f32[2,4]{1,0} %x)
-  %y = f32[2,4]{1,0} parameter(2)
-  ROOT %add = f32[2,4]{1,0} add(f32[2,4]{1,0} %multiply, f32[2,4]{1,0} %y)
-}
-)";
-  EXPECT_TRUE(RunAndCompareNoHloPasses(hlo_string, ErrorSpec{0.0001}));
+//TEST_F(SampleTextTest, Axpy) {
+//  const string& hlo_string = R"(
+//HloModule axpy_module:
+//ENTRY %axpy.v5 (alpha: f32[], x: f32[2,4], y: f32[2,4]) -> f32[2,4] {
+//  %alpha = f32[] parameter(0)
+//  %broadcast = f32[2,4]{1,0} broadcast(f32[] %alpha), dimensions={}
+//  %x = f32[2,4]{1,0} parameter(1)
+//  %multiply = f32[2,4]{1,0} multiply(f32[2,4]{1,0} %broadcast, f32[2,4]{1,0} %x)
+//  %y = f32[2,4]{1,0} parameter(2)
+//  ROOT %add = f32[2,4]{1,0} add(f32[2,4]{1,0} %multiply, f32[2,4]{1,0} %y)
+//}
+//)";
+//  EXPECT_TRUE(RunAndCompareNoHloPasses(hlo_string, ErrorSpec{0.0001}));
+//}
+//
+//TEST_F(SampleTextTest, Tuple) {
+//  const string& hlo_string = R"(
+//HloModule TupleCreate_module:
+//ENTRY %TupleCreate.v4 (v1: f32[], v2: f32[3], v3: f32[2,3]) -> (f32[], f32[3], f32[2,3]) {
+//  %v1 = f32[] parameter(0)
+//  %v2 = f32[3]{0} parameter(1)
+//  %v3 = f32[2,3]{1,0} parameter(2)
+//  ROOT %tuple = (f32[], f32[3]{0}, f32[2,3]{1,0}) tuple(f32[] %v1, f32[3]{0} %v2, f32[2,3]{1,0} %v3)
+//}
+//)";
+//  EXPECT_TRUE(RunAndCompare(hlo_string, nullopt));
+//}
+
+TEST_F(SampleTextTest, ReduceR3ToR2) {
+  const string& hlo_string =
+R"(HloModule ReduceR3ToR2_module
+
+add_F32.v3 {
+  lhs = f32[] parameter(0)
+  rhs = f32[] parameter(1)
+  ROOT add = f32[] add(lhs, rhs)
 }
 
-TEST_F(SampleTextTest, Tuple) {
-  const string& hlo_string = R"(
-HloModule TupleCreate_module:
-ENTRY %TupleCreate.v4 (v1: f32[], v2: f32[3], v3: f32[2,3]) -> (f32[], f32[3], f32[2,3]) {
-  %v1 = f32[] parameter(0)
-  %v2 = f32[3]{0} parameter(1)
-  %v3 = f32[2,3]{1,0} parameter(2)
-  ROOT %tuple = (f32[], f32[3]{0}, f32[2,3]{1,0}) tuple(f32[] %v1, f32[3]{0} %v2, f32[2,3]{1,0} %v3)
+ENTRY ReduceR3ToR2.v3 {
+  input = f32[8,16,256]{2,1,0} parameter(0)
+  constant = f32[] constant(0)
+  ROOT reduce = f32[8,16]{1,0} reduce(input, constant), dimensions={2}, to_apply=add_F32.v3
 }
+
 )";
-  EXPECT_TRUE(RunAndCompare(hlo_string, nullopt));
+  EXPECT_TRUE(RunAndCompare(hlo_string, ErrorSpec{0.0001}));
 }
 
 }  // namespace
