@@ -23,6 +23,15 @@ config_setting(
     define_values = {"tflite_with_ruy": "false"},
 )
 
+config_setting(
+    name = "chromiumos_arm64",
+    values = {
+        "crosstool_top": "//external:chromiumos/crosstool",
+        "cpu": "arm",
+    },
+    visibility = ["//visibility:public"],
+)
+
 # Suppress warnings that are introduced by Eigen Tensor.
 EXTRA_EIGEN_COPTS = select({
     "//tensorflow:ios": [
@@ -119,8 +128,8 @@ cc_library(
     name = "tflite_with_ruy_default",
     visibility = ["//visibility:private"],
     deps = select({
-        # TODO(b/133306271): Enable for ARM64 after validating performance.
-        "//tensorflow:android_arm64": [],
+        "//tensorflow:android_arm64": [":tflite_with_ruy_enabled"],
+        ":chromiumos_arm64": [":tflite_with_ruy_enabled"],
         "//conditions:default": [],
     }),
 )
@@ -449,7 +458,6 @@ cc_library(
     deps = [
         ":builtin_op_kernels",
         "//tensorflow/lite:framework",
-        "//tensorflow/lite:util",
         "//tensorflow/lite/c:c_api_internal",
     ],
 )
@@ -1243,6 +1251,7 @@ cc_test(
     name = "tile_test",
     size = "small",
     srcs = ["tile_test.cc"],
+    tags = ["tflite_nnapi"],
     deps = [
         ":builtin_ops",
         ":test_main",
@@ -1426,6 +1435,7 @@ cc_test(
     name = "logical_test",
     size = "small",
     srcs = ["logical_test.cc"],
+    tags = ["tflite_nnapi"],
     deps = [
         ":builtin_ops",
         ":test_main",
