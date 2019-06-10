@@ -44,10 +44,12 @@ class Visitor : public DfsHloVisitorWithDefault {
 };
 
 Status Visitor::HandleReduce(HloInstruction* reduce) {
-  std::vector<HloInstruction*> operands(reduce->operands().begin(),
-                                        reduce->operands().end());
-  computation_->AddInstruction(HloInstruction::CreateCustomCall(
-      reduce->shape(), operands, kEmptyCallTarget));
+  std::vector<HloInstruction*> operands;
+  operands.push_back(reduce);
+  HloInstruction* new_root =
+      computation_->AddInstruction(HloInstruction::CreateCustomCall(
+          reduce->shape(), operands, kEmptyCallTarget));
+  computation_->set_root_instruction(new_root);
   changed_ = true;
   return Status::OK();
 }

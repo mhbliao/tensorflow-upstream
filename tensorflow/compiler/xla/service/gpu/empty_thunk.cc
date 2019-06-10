@@ -21,8 +21,10 @@ limitations under the License.
 namespace xla {
 namespace gpu {
 
-EmptyThunk::EmptyThunk(const HloInstruction* hlo)
-    : Thunk(Kind::kEmpty, hlo), message_(hlo->ToString()) {}
+EmptyThunk::EmptyThunk(const BufferAllocation::Slice& input,
+                       const BufferAllocation::Slice& output,
+                       const HloInstruction* hlo)
+    : Thunk(Kind::kEmpty, hlo), input_(input), output_(output) {}
 
 Status EmptyThunk::Initialize(const GpuExecutable& executable,
                               se::StreamExecutor* executor) {
@@ -32,8 +34,12 @@ Status EmptyThunk::Initialize(const GpuExecutable& executable,
 Status EmptyThunk::ExecuteOnStream(
     const BufferAllocations& buffer_allocations, se::Stream* stream,
     HloExecutionProfiler* profiler) {
+  se::DeviceMemoryBase input_data = buffer_allocations.GetDeviceAddress(input_);
+  se::DeviceMemoryBase output_data =
+      buffer_allocations.GetDeviceAddress(output_);
   auto op_profiler = profiler->MakeScopedInstructionProfiler(hlo_instruction());
-  LOG(INFO) << "Execute EmptyThunk for: " << message_ << "\n";
+  LOG(INFO) << "Execute EmptyThunk\n";
+  stream->ThenMemcpy(&output_data, input_data, output_data.size());
   return Status::OK();
 }
 
