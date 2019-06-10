@@ -514,7 +514,8 @@ Status IrEmitterUnnested::HandleCustomCall(HloInstruction* custom_call) {
   if (custom_call->custom_call_target() == kEmptyCallTarget) {
     AddThunkToThunkSequence(absl::make_unique<EmptyThunk>(
         GetAllocationSlice(*custom_call->operand(0)),
-        GetAllocationSlice(*custom_call), custom_call));
+        GetAllocationSlice(*custom_call), custom_call,
+        custom_call->operand(0)));
     return Status::OK();
   }
 

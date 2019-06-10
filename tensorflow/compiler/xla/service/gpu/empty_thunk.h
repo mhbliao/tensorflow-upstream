@@ -29,7 +29,9 @@ namespace gpu {
 class EmptyThunk : public Thunk {
  public:
   EmptyThunk(const BufferAllocation::Slice& input,
-             const BufferAllocation::Slice& output, const HloInstruction* hlo);
+             const BufferAllocation::Slice& output,
+             const HloInstruction* custom_call_hlo,
+             const HloInstruction* hlo);
   EmptyThunk(const EmptyThunk&) = delete;
   EmptyThunk& operator=(const EmptyThunk&) = delete;
 
@@ -41,6 +43,7 @@ class EmptyThunk : public Thunk {
  private:
   const BufferAllocation::Slice input_;
   const BufferAllocation::Slice output_;
+  const HloInstruction* hlo_;
 };
 
 }  // namespace gpu

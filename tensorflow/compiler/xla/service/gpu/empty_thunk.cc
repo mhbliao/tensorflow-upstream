@@ -23,8 +23,9 @@ namespace gpu {
 
 EmptyThunk::EmptyThunk(const BufferAllocation::Slice& input,
                        const BufferAllocation::Slice& output,
+                       const HloInstruction* custom_call_hlo,
                        const HloInstruction* hlo)
-    : Thunk(Kind::kEmpty, hlo), input_(input), output_(output) {}
+    : Thunk(Kind::kEmpty, custom_call_hlo), input_(input), output_(output), hlo_(hlo) {}
 
 Status EmptyThunk::Initialize(const GpuExecutable& executable,
                               se::StreamExecutor* executor) {
@@ -38,6 +39,8 @@ Status EmptyThunk::ExecuteOnStream(
   se::DeviceMemoryBase output_data =
       buffer_allocations.GetDeviceAddress(output_);
   auto op_profiler = profiler->MakeScopedInstructionProfiler(hlo_instruction());
+  LOG(INFO) << "EmptyThunk for HLO: " << hlo_->ToString();
+
   LOG(INFO) << "Execute EmptyThunk\n";
   stream->ThenMemcpy(&output_data, input_data, output_data.size());
   return Status::OK();
