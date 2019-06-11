@@ -4535,6 +4535,7 @@ cc_library(
     deps = [
         ":no_op",
         ":sendrecv_ops",
+        ":empty_op",
     ],
 )
 
@@ -4547,6 +4548,33 @@ tf_kernel_library(
     name = "no_op",
     prefix = "no_op",
     deps = REQUIRED_DEPS,
+)
+
+tf_kernel_library(
+    name = "empty_op",
+    srcs = [
+        "empty_op.cc",
+    ],
+    hdrs = [
+        "empty_op.h",
+    ],
+    gpu_srcs = [
+        "empty_op.h",
+        "empty_op_gpu.cu.cc",
+    ],
+    deps = REQUIRED_DEPS + if_rocm_is_configured([
+        "@rocprim_archive//:rocprim",
+    ]),
+)
+
+cc_library(
+    name = "empty_op_headers",
+    srcs = [
+        "empty_op.h",
+    ],
+    deps = REQUIRED_DEPS + if_rocm_is_configured([
+        "@rocprim_archive//:rocprim",
+    ]),
 )
 
 tf_kernel_library(

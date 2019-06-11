@@ -5476,6 +5476,18 @@ Stream& Stream::ThenFusedBatchNormActivationBackward(
   return *this;
 }
 
+Stream& Stream::ThenEmpty() {
+  if (ok()) {
+    if (dnn::DnnSupport* dnn = parent_->AsDnn()) {
+      CheckError(dnn->DoEmpty(this));
+    } else {
+      SetErrorAndLogNoDnnSupport();
+    }
+  }
+
+  return *this;
+}
+
 port::Status Stream::BlockHostUntilDone() {
   VLOG_CALL();
 

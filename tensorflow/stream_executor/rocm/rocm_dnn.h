@@ -766,6 +766,8 @@ class MIOpenSupport : public dnn::DnnSupport {
       ScratchAllocator* scratch_allocator, dnn::AlgorithmDesc* algorithm_desc,
       DeviceMemory<uint8>* scratch_memory) override;
 
+  bool DoEmpty(Stream* stream) override;
+
   SE_DISALLOW_COPY_AND_ASSIGN(MIOpenSupport);
 };
 

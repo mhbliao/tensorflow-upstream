@@ -43,6 +43,8 @@ limitations under the License.
 #include "rocm/include/miopen/miopen.h"
 // clang-format on
 
+#include "tensorflow/core/kernels/empty_op.h"
+
 
 namespace {
 
@@ -4498,6 +4500,13 @@ bool MIOpenSupport::DoFusedBatchNormActivationBackward(
       scale_offset_mean_variance_descriptor, scale_data, offset_data,
       saved_mean_data, saved_var_data, x_bn_backprop_data, scale_backprop_data,
       offset_backprop_data, output_profile_result);
+}
+
+bool MIOpenSupport::DoEmpty(Stream* stream) {
+  LOG(INFO) << "MIOpenSupport::DoEmpty()";
+  hipStream_t hip_stream = stream ? AsGpuStreamValue(stream) : nullptr;
+  tensorflow::EmptyKernelLaunch(hip_stream);
+  return true;
 }
 
 }  // namespace gpu

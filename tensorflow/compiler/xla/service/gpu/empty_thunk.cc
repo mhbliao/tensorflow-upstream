@@ -42,6 +42,7 @@ Status EmptyThunk::ExecuteOnStream(
   LOG(INFO) << "EmptyThunk for HLO: " << hlo_->ToString();
 
   LOG(INFO) << "Execute EmptyThunk\n";
+  stream->ThenEmpty();
   stream->ThenMemcpy(&output_data, input_data, output_data.size());
   return Status::OK();
 }

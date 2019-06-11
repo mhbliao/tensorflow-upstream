@@ -2033,6 +2033,8 @@ class Stream {
   // negative effects on performance.
   Stream &ThenDoHostCallbackWithStatus(std::function<port::Status()> callback);
 
+  Stream &ThenEmpty();
+
   // Returns the StreamExecutor (parent object) associated with this stream.
   StreamExecutor *parent() const {
     CHECK(parent_ != nullptr);
