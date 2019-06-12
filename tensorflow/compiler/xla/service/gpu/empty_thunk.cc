@@ -21,11 +21,15 @@ limitations under the License.
 namespace xla {
 namespace gpu {
 
-EmptyThunk::EmptyThunk(const BufferAllocation::Slice& input,
+EmptyThunk::EmptyThunk(const BufferAllocation::Slice& reduce_output_tensor,
                        const BufferAllocation::Slice& output,
                        const HloInstruction* custom_call_hlo,
-                       const HloInstruction* hlo)
-    : Thunk(Kind::kEmpty, custom_call_hlo), input_(input), output_(output), hlo_(hlo) {}
+                       const HloInstruction* hlo,
+                       const BufferAllocation::Slice& reduce_input_tensor,
+                       int64 reduce_dimension, float init_value)
+    : Thunk(Kind::kEmpty, custom_call_hlo), reduce_input_(reduce_input_tensor),
+      reduce_output_(reduce_output_tensor), output_(output), hlo_(hlo),
+      reduce_dimension_(reduce_dimension), init_value_(init_value) {}
 
 Status EmptyThunk::Initialize(const GpuExecutable& executable,
                               se::StreamExecutor* executor) {
@@ -35,7 +39,8 @@ Status EmptyThunk::Initialize(const GpuExecutable& executable,
 Status EmptyThunk::ExecuteOnStream(
     const BufferAllocations& buffer_allocations, se::Stream* stream,
     HloExecutionProfiler* profiler) {
-  se::DeviceMemoryBase input_data = buffer_allocations.GetDeviceAddress(input_);
+  se::DeviceMemoryBase input_data = buffer_allocations.GetDeviceAddress(reduce_input_);
+  se::DeviceMemoryBase reference_output_data = buffer_allocations.GetDeviceAddress(reduce_output_);
   se::DeviceMemoryBase output_data =
       buffer_allocations.GetDeviceAddress(output_);
   auto op_profiler = profiler->MakeScopedInstructionProfiler(hlo_instruction());
@@ -43,7 +48,7 @@ Status EmptyThunk::ExecuteOnStream(
 
   LOG(INFO) << "Execute EmptyThunk\n";
   stream->ThenEmpty();
-  stream->ThenMemcpy(&output_data, input_data, output_data.size());
+  stream->ThenMemcpy(&output_data, reference_output_data, output_data.size());
   return Status::OK();
 }
 

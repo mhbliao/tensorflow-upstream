@@ -28,10 +28,12 @@ namespace gpu {
 // An empty thunk which does nothing
 class EmptyThunk : public Thunk {
  public:
-  EmptyThunk(const BufferAllocation::Slice& input,
+  EmptyThunk(const BufferAllocation::Slice& reduce_output_tensor,
              const BufferAllocation::Slice& output,
              const HloInstruction* custom_call_hlo,
-             const HloInstruction* hlo);
+             const HloInstruction* hlo,
+             const BufferAllocation::Slice& reduce_input_tensor,
+             int64 reduce_dimension, float init_value);
   EmptyThunk(const EmptyThunk&) = delete;
   EmptyThunk& operator=(const EmptyThunk&) = delete;
 
@@ -41,9 +43,12 @@ class EmptyThunk : public Thunk {
                          se::Stream* stream,
                          HloExecutionProfiler* profiler) override;
  private:
-  const BufferAllocation::Slice input_;
+  const BufferAllocation::Slice reduce_input_;
+  const BufferAllocation::Slice reduce_output_;
   const BufferAllocation::Slice output_;
   const HloInstruction* hlo_;
+  int64 reduce_dimension_;
+  float init_value_;
 };
 
 }  // namespace gpu
