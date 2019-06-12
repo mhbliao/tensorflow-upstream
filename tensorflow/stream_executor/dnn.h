@@ -2554,7 +2554,11 @@ class DnnSupport {
     return false;
   }
 
-  virtual bool DoEmpty(Stream* stream) {
+  virtual bool DoEmpty(Stream* stream,
+                       const DeviceMemoryBase& input,
+                       DeviceMemoryBase* output,
+                       float init_value,
+                       int64 reduction_dimension) {
     return false;
   }
 

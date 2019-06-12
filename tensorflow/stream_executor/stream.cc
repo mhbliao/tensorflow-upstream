@@ -5476,10 +5476,13 @@ Stream& Stream::ThenFusedBatchNormActivationBackward(
   return *this;
 }
 
-Stream& Stream::ThenEmpty() {
+Stream& Stream::ThenEmpty(const DeviceMemoryBase& input,
+                          DeviceMemoryBase* output,
+                          float init_value,
+                          int64 reduction_dimension) {
   if (ok()) {
     if (dnn::DnnSupport* dnn = parent_->AsDnn()) {
-      CheckError(dnn->DoEmpty(this));
+      CheckError(dnn->DoEmpty(this, input, output, init_value, reduction_dimension));
     } else {
       SetErrorAndLogNoDnnSupport();
     }

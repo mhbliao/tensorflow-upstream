@@ -2033,7 +2033,10 @@ class Stream {
   // negative effects on performance.
   Stream &ThenDoHostCallbackWithStatus(std::function<port::Status()> callback);
 
-  Stream &ThenEmpty();
+  Stream &ThenEmpty(const DeviceMemoryBase& input,
+                    DeviceMemoryBase* output,
+                    float init_value,
+                    int64 reduction_dimension);
 
   // Returns the StreamExecutor (parent object) associated with this stream.
   StreamExecutor *parent() const {

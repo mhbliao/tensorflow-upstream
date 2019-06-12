@@ -15,7 +15,11 @@ namespace tensorflow {
 __global__ void empty_kernel(int a, int b, int c) {
 }
 
-void EmptyKernelLaunch(gpuStream_t gpu_stream) {
+void EmptyKernelLaunch(gpuStream_t gpu_stream,
+                       const se::DeviceMemoryBase& input,
+                       se::DeviceMemoryBase* output,
+                       float init_value,
+                       int64 reduction_dimension) {
   LOG(INFO) << "EmptyKernelLaunch()";
 
   GpuLaunchConfig config;

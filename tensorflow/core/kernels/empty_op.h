@@ -16,12 +16,18 @@ limitations under the License.
 #ifndef TENSORFLOW_CORE_KERNELS_EMPTY_OP_H_
 #define TENSORFLOW_CORE_KERNELS_EMPTY_OP_H_
 
+#include "tensorflow/stream_executor/stream_executor.h"
+
 #include "rocm/include/hip/hip_runtime.h"
 
 namespace tensorflow {
 
 typedef hipStream_t gpuStream_t;
-void EmptyKernelLaunch(gpuStream_t gpu_stream);
+void EmptyKernelLaunch(gpuStream_t gpu_stream,
+                       const se::DeviceMemoryBase& input,
+                       se::DeviceMemoryBase* output,
+                       float init_value,
+                       int64 reduction_dimension);
 
 }  // namespace tensorflow
 

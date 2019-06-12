@@ -4502,10 +4502,12 @@ bool MIOpenSupport::DoFusedBatchNormActivationBackward(
       offset_backprop_data, output_profile_result);
 }
 
-bool MIOpenSupport::DoEmpty(Stream* stream) {
+bool MIOpenSupport::DoEmpty(
+    Stream* stream, const DeviceMemoryBase& input,
+    DeviceMemoryBase* output, float init_value, int64 reduction_dimension) {
   LOG(INFO) << "MIOpenSupport::DoEmpty()";
   hipStream_t hip_stream = stream ? AsGpuStreamValue(stream) : nullptr;
-  tensorflow::EmptyKernelLaunch(hip_stream);
+  tensorflow::EmptyKernelLaunch(hip_stream, input, output, init_value, reduction_dimension);
   return true;
 }
 
