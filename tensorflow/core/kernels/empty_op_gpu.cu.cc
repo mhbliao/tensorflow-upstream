@@ -63,12 +63,14 @@ void EmptyKernelLaunch(gpuStream_t gpu_stream,
 #if 1
   const int num_blocks = 1;
   const int num_threads = 256;
-  GPU_LAUNCH_KERNEL(BlockReduceKernel,
-      dim3(num_blocks), dim3(num_threads), 0, gpu_stream,
-      reinterpret_cast<const float*>(input.opaque()),
-      reinterpret_cast<float*>(output->opaque()),
-      static_cast<int>(input.size()/sizeof(float)),
-      init_value);
+  for (int i = 0; i < 256; ++i) {
+    GPU_LAUNCH_KERNEL(BlockReduceKernel,
+        dim3(num_blocks), dim3(num_threads), 0, gpu_stream,
+        reinterpret_cast<const float*>(input.opaque()) + (256 * i),
+        reinterpret_cast<float*>(output->opaque()) + i,
+        256,
+        init_value);
+  }
 #endif 
 
 #if 0

@@ -48,7 +48,7 @@ Status EmptyThunk::ExecuteOnStream(
 
   LOG(INFO) << "Execute EmptyThunk\n";
   stream->ThenEmpty(input_data, &output_data, init_value_, reduce_dimension_);
-  stream->ThenMemcpy(&output_data, reference_output_data, output_data.size());
+  //stream->ThenMemcpy(&output_data, reference_output_data, output_data.size());
   return Status::OK();
 }
 
