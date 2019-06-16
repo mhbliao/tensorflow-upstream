@@ -933,8 +933,8 @@ void LaunchConv2DOp<GPUDevice, T>::operator()(
   ProfileResult best_result_no_scratch;
   if (cudnn_use_autotune &&
       !AutoTuneConv::GetInstance()->Find(conv_parameters, &algorithm_config)) {
-#if GOOGLE_CUDA
     std::vector<AlgorithmDesc> algorithms;
+#if GOOGLE_CUDA
     OP_REQUIRES(
         ctx,
         stream->parent()->GetConvolveAlgorithms(
@@ -944,6 +944,17 @@ void LaunchConv2DOp<GPUDevice, T>::operator()(
         errors::Unknown("Failed to get convolution algorithm. This is probably "
                         "because cuDNN failed to initialize, so try looking to "
                         "see if a warning log message was printed above."));
+#elif TENSORFLOW_USE_ROCM
+    OP_REQUIRES(ctx,
+                stream->parent()->GetMIOpenConvolveAlgorithms(
+                    se::dnn::ConvolutionKind::FORWARD, stream,
+                    se::dnn::ToDataType<T>::value, input_desc, filter_desc,
+                    conv_desc, output_desc, &algorithms),
+                errors::Unknown(
+                    "Failed to get convolution algorithm. This is probably "
+                    "because MIOpen failed to initialize, so try looking to "
+                    "see if a warning log message was printed above."));
+#endif
     std::vector<tensorflow::AutotuneResult> results;
     for (auto profile_algorithm : algorithms) {
       // TODO(zhengxq): profile each algorithm multiple times to better
@@ -973,24 +984,6 @@ void LaunchConv2DOp<GPUDevice, T>::operator()(
                            filter_desc, output_desc, conv_desc,
                            stream->parent(), results);
     OP_REQUIRES_OK(ctx, BestCudnnConvAlgorithm(results, &algorithm_config));
-#elif TENSORFLOW_USE_ROCM
-    // MIOpen has its own Find and autotuner so use it here, passing
-    // default AlgorithmConfig to force a search
-    DnnScratchAllocator scratch_allocator(ConvolveScratchSize, ctx);
-    bool miopen_find_status =
-        stream
-            ->ThenConvolveWithAlgorithm(input_desc, input_ptr, filter_desc,
-                                        filter_ptr, conv_desc, output_desc,
-                                        &output_ptr, &scratch_allocator,
-                                        AlgorithmConfig(), &best_result)
-            .ok();
-
-    OP_REQUIRES(ctx, miopen_find_status && best_result.is_valid(),
-                errors::NotFound("Failed to find conv algorithm!"));
-
-    algorithm_config.set_algorithm(best_result.algorithm());
-    algorithm_config.set_scratch_size(best_result.scratch_size());
-#endif
     AutoTuneConv::GetInstance()->Insert(conv_parameters, algorithm_config);
   }
 

@@ -15,7 +15,7 @@ limitations under the License.
 
 #include "tensorflow/core/kernels/gpu_utils.h"
 
-#if GOOGLE_CUDA
+#if GOOGLE_CUDA || TENSORFLOW_USE_ROCM
 
 #include "google/protobuf/any.pb.h"
 #include "tensorflow/core/platform/logger.h"
@@ -148,4 +148,4 @@ Status BestCudnnConvAlgorithm(absl::Span<const AutotuneResult> results,
 
 }  // namespace tensorflow
 
-#endif  // GOOGLE_CUDA
+#endif  // GOOGLE_CUDA || TENSORFLOW_USE_ROCM
