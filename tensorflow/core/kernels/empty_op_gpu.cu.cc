@@ -12,9 +12,6 @@ namespace gpuprim = ::hipcub;
 
 namespace tensorflow {
 
-__global__ void empty_kernel(int a, int b, int c) {
-}
-
 // each block does a grid strided loop and reduces its values locally
 // the case of one block is used for low latency small reductions to scalars
 __global__ void BlockReduceKernel(
@@ -60,29 +57,14 @@ void EmptyKernelLaunch(gpuStream_t gpu_stream,
   LOG(INFO) << "init value: " << init_value;
   LOG(INFO) << "reudction dimension: " << reduction_dimension;
 
-#if 1
   const int num_blocks = 1;
   const int num_threads = 256;
-  for (int i = 0; i < 256; ++i) {
-    GPU_LAUNCH_KERNEL(BlockReduceKernel,
-        dim3(num_blocks), dim3(num_threads), 0, gpu_stream,
-        reinterpret_cast<const float*>(input.opaque()) + (256 * i),
-        reinterpret_cast<float*>(output->opaque()) + i,
-        256,
-        init_value);
-  }
-#endif 
-
-#if 0
-  GpuLaunchConfig config;
-  config.virtual_thread_count = 256;
-  config.thread_per_block = 256;
-  config.block_count = 1;
-
-  GPU_LAUNCH_KERNEL(empty_kernel, dim3(config.block_count), dim3(config.thread_per_block), 0,
-                    /* stream */ gpu_stream,
-                    /* kernel arguments */ 0, 0, 0);
-#endif
+  GPU_LAUNCH_KERNEL(BlockReduceKernel,
+      dim3(num_blocks), dim3(num_threads), 0, gpu_stream,
+      reinterpret_cast<const float*>(input.opaque()),
+      reinterpret_cast<float*>(output->opaque()),
+      input.size()/sizeof(float),
+      init_value);
 }
 
 } // namespace tensorflow

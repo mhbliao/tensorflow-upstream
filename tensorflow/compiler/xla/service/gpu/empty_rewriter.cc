@@ -16,6 +16,7 @@ limitations under the License.
 #include "tensorflow/compiler/xla/service/gpu/empty_rewriter.h"
 #include "tensorflow/compiler/xla/literal.h"
 #include "tensorflow/compiler/xla/literal_util.h"
+#include "tensorflow/compiler/xla/service/hlo_casting_utils.h"
 #include "tensorflow/compiler/xla/service/gpu/ir_emission_utils.h"
 
 namespace xla {
@@ -44,13 +45,23 @@ class Visitor : public DfsHloVisitorWithDefault {
 };
 
 Status Visitor::HandleReduce(HloInstruction* reduce) {
-  std::vector<HloInstruction*> operands;
-  operands.push_back(reduce);
-  HloInstruction* new_root =
-      computation_->AddInstruction(HloInstruction::CreateCustomCall(
-          reduce->shape(), operands, kEmptyCallTarget));
-  computation_->set_root_instruction(new_root);
-  changed_ = true;
+  const HloReduceInstruction* reduce_instr = Cast<HloReduceInstruction>(reduce);
+  if (reduce_instr) {
+    // only rewrite when the reduction results a scalar f32 value
+    if (reduce_instr->shape().dimensions_size() == 0 &&
+        reduce_instr->shape().element_type() == F32) {
+      LOG(INFO) << "Rewrite: " << reduce_instr->ToString(); 
+      std::vector<HloInstruction*> operands;
+      operands.push_back(reduce);
+      HloInstruction* new_root =
+          computation_->AddInstruction(HloInstruction::CreateCustomCall(
+              reduce->shape(), operands, kEmptyCallTarget));
+      if (computation_->root_instruction() == reduce) {
+        computation_->set_root_instruction(new_root);
+      }
+      changed_ = true;
+    }
+  }
   return Status::OK();
 }
 
